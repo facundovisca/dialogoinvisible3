@@ -937,7 +937,7 @@ function registrarProbeCSV(mac, rssi, ssid, estado) {
   filasCSV.push(`${new Date().toISOString()},${Math.round(millis() - inicioGrabacion)},${mac},${aleatoria ? 1 : 0},${rssi},${ssidCsv},${estado}`);
 }
 
-// Historial acumulativo: cada célula, incluidas las hijas, conserva una línea con el color de su edad.
+// Historial acumulativo: cada dispositivo real conserva una línea con el color de su edad (excluye esporas).
 function actualizarConsola(ahora) {
   if (!serialLogEl) return;
   if (ahora - ultimaConsola < 150) return;     // ~7 veces por segundo alcanza
@@ -946,7 +946,8 @@ function actualizarConsola(ahora) {
   let dispositivosActivos = 0;
   let agregoLinea = false;
   for (const [id, e] of mapEntidades) {
-    if (!e.esEspora && !e.desvaneciendo) dispositivosActivos++;
+    if (e.esEspora) continue;
+    if (!e.desvaneciendo) dispositivosActivos++;
 
     const claveLinea = `${id}-${e.seed}`;
     let el = lineasConsola.get(claveLinea);
@@ -957,12 +958,9 @@ function actualizarConsola(ahora) {
       serialLogEl.appendChild(el);
       agregoLinea = true;
     }
-    const red = e.esEspora ? "  |  <SPAWN POR CONEXIÓN>" :
-      (!CONSOLA_MUESTRA_SSID ? "" :
-        (e.ssid && e.ssid !== "BROADCAST" ? `  |  [${e.ssid}]` : "  |  <PROBE SEARCH>"));
-    const identidad = e.esEspora
-      ? `${String(e.macOrigen || e.mac).toUpperCase()}  |  HIJA G${e.generacion} (${id})`
-      : String(e.mac).toUpperCase();
+    const red = !CONSOLA_MUESTRA_SSID ? "" :
+      (e.ssid && e.ssid !== "BROADCAST" ? `  |  [${e.ssid}]` : "  |  <PROBE SEARCH>");
+    const identidad = String(e.mac).toUpperCase();
     el.textContent = `${identidad}  |  ${Math.round(e.rssi)} dBm  |  PETICIONES ${e.cantidadPeticiones}${red}`;   // textContent: nada se interpreta como HTML
     const [r, g, b] = colorPorEdad(e.edadColor);
     el.style.color = `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
