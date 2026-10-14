@@ -31,6 +31,7 @@ let ruidoBlancoColapso;
 let filtroRuidoColapso;
 let proximoRuidoColapso = 0;
 let finRuidoColapso = 0;
+let colapsoRuidoActivoFlag = false;
 let colapsoSonoroAnterior = false;
 let ultimoActualizadoAmbienteColapso = 0;
 const FREQ_SUBGRAVE_COLAPSO = 41.2;
@@ -225,40 +226,58 @@ function actualizarDronesTensionColapso(activa, tiempoColapso) {
 }
 
 function actualizarAmbienteColapso(activa) {
-  if (!droneSubgraveColapso || !ruidoBlancoColapso) return;
   const ahora = millis();
+  if (!activa) {
+    if (ruidoBlancoColapso) ruidoBlancoColapso.amp(0, 0.04);
+    proximoRuidoColapso = 0;
+    finRuidoColapso = 0;
+    colapsoSonoroAnterior = false;
+    colapsoRuidoActivoFlag = false;
+    return;
+  }
+
   const dt = ultimoActualizadoAmbienteColapso > 0
     ? min(0.1, (ahora - ultimoActualizadoAmbienteColapso) / 1000)
     : 0;
   ultimoActualizadoAmbienteColapso = ahora;
-  const nivelObjetivo = activa ? 1 : 0;
-  nivelSubgraveColapso += (nivelObjetivo - nivelSubgraveColapso) *
-    (1 - Math.exp(-dt / 1.5));
-  droneSubgraveColapso.amp(AMP_SUBGRAVE_COLAPSO * nivelSubgraveColapso);
-  if (!activa) {
-    ruidoBlancoColapso.amp(0, 0.04);
-    proximoRuidoColapso = 0;
-    finRuidoColapso = 0;
-    colapsoSonoroAnterior = false;
-    return;
+  const nivelObjetivo = 1;
+  if (droneSubgraveColapso) {
+    nivelSubgraveColapso += (nivelObjetivo - nivelSubgraveColapso) *
+      (1 - Math.exp(-dt / 1.5));
+    droneSubgraveColapso.amp(AMP_SUBGRAVE_COLAPSO * nivelSubgraveColapso);
   }
 
   if (!colapsoSonoroAnterior) {
-    proximoRuidoColapso = ahora + random(1200, 2600);
+    proximoRuidoColapso = ahora + 120;
     finRuidoColapso = 0;
     colapsoSonoroAnterior = true;
   }
   if (finRuidoColapso > 0 && ahora >= finRuidoColapso) {
-    ruidoBlancoColapso.amp(0, 0.035);
+    if (ruidoBlancoColapso) ruidoBlancoColapso.amp(0, 0.035);
     finRuidoColapso = 0;
+    colapsoRuidoActivoFlag = false;
     proximoRuidoColapso = ahora + random(2200, 4800);
   }
   if (finRuidoColapso === 0 && ahora >= proximoRuidoColapso) {
-    ruidoBlancoColapso.amp(AMP_RUIDO_COLAPSO, 0.008);
-    finRuidoColapso = ahora + random(55, 115);
+    if (ruidoBlancoColapso) ruidoBlancoColapso.amp(AMP_RUIDO_COLAPSO, 0.008);
+    finRuidoColapso = ahora + random(65, 125);
+    colapsoRuidoActivoFlag = true;
   }
-
 }
+
+function estaActivoRuidoColapso() {
+  return typeof colapsoActivo !== "undefined" && colapsoActivo && (colapsoRuidoActivoFlag || (finRuidoColapso > 0 && millis() < finRuidoColapso));
+}
+
+function dispararRuidoColapsoInmediato() {
+  const ahora = millis();
+  if (ruidoBlancoColapso) ruidoBlancoColapso.amp(AMP_RUIDO_COLAPSO, 0.008);
+  finRuidoColapso = ahora + random(90, 150);
+  colapsoRuidoActivoFlag = true;
+  proximoRuidoColapso = finRuidoColapso + random(1800, 3600);
+  colapsoSonoroAnterior = true;
+}
+
 
 // ---------------- 2. PROBES CRISTALINOS (SINE + TRIÁNGULO DESAFINADO) ----------------
 

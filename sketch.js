@@ -457,6 +457,8 @@ function draw() {
         1
       );
     }
+    const ruidoActivo = typeof estaActivoRuidoColapso === "function" ? estaActivoRuidoColapso() : false;
+    aplicarEfectoGlitch(ruidoActivo, 1);
   }
 }
 
@@ -667,6 +669,7 @@ function actualizarLogicaGlobal() {
     conexiones: payloadConexiones,
     colapso: {
       activo: colapsoActivo,
+      ruidoActivo: typeof estaActivoRuidoColapso === "function" ? estaActivoRuidoColapso() : false,
       parpadeoNegro: parpadeoNegro,
       seguimientos: seguimientosActuales.map(seguimiento => ({
         nx: seguimiento.x / width,
@@ -942,6 +945,9 @@ function aplicarEstadoColapso(activo) {
     actualizarVisibilidadLog();
     conexiones.length = 0;
     conexionesPorPar.clear();
+    if (typeof dispararRuidoColapsoInmediato === "function") {
+      dispararRuidoColapsoInmediato();
+    }
   } else {
     params.modoOrbital = modoOrbitalAntesColapso;
     parpadeoNegro = 0;

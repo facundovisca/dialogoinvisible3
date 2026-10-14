@@ -7,6 +7,7 @@ const SIN_SENAL_MS = 2000;
 let entidadesRecibidas = [];
 let conexionesRecibidas = [];
 let colapsoActivo = false;
+let ruidoColapsoActivo = false;
 let parpadeoNegro = 0;
 let seguimientosActuales = [];
 
@@ -32,6 +33,7 @@ function setup() {
       entidadesRecibidas = data.entidades || [];
       conexionesRecibidas = data.conexiones || [];
       colapsoActivo = Boolean(data.colapso && data.colapso.activo);
+      ruidoColapsoActivo = Boolean(data.colapso && data.colapso.ruidoActivo);
       parpadeoNegro = data.colapso ? data.colapso.parpadeoNegro || 0 : 0;
       seguimientosActuales = data.colapso ? data.colapso.seguimientos || [] : [];
       if (data.anchoOrigen) anchoOrigen = data.anchoOrigen;
@@ -43,6 +45,7 @@ function setup() {
       entidadesRecibidas = [];
       conexionesRecibidas = [];
       colapsoActivo = false;
+      ruidoColapsoActivo = false;
       parpadeoNegro = 0;
       seguimientosActuales = [];
     }
@@ -57,6 +60,7 @@ function draw() {
     entidadesRecibidas = [];      // el fondo translúcido se encarga del fundido a negro
     conexionesRecibidas = [];
     colapsoActivo = false;
+    ruidoColapsoActivo = false;
     parpadeoNegro = 0;
     seguimientosActuales = [];
   }
@@ -169,6 +173,7 @@ function draw() {
         k
       );
     }
+    aplicarEfectoGlitch(ruidoColapsoActivo, k);
   }
 }
 

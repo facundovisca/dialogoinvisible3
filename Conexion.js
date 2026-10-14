@@ -251,3 +251,84 @@ function dibujarSeguimientoCelula(x, y, tam, alpha, mac = "", alphaMac = 0, dbm 
   }
   pop();
 }
+
+function aplicarEfectoGlitch(ruidoFuerte = false, k = 1) {
+  const ctx = drawingContext;
+  if (!ctx || !ctx.canvas) return;
+  const w = width;
+  const h = height;
+
+  push();
+
+  if (ruidoFuerte) {
+    // --- IMPACTO FUERTE (acoplado al pulso de ruido blanco del audio) ---
+    // 1. Rebanadas horizontales desplazadas (Opción A)
+    const cantFranjas = floor(random(6, 12));
+    for (let i = 0; i < cantFranjas; i++) {
+      const sh = floor(random(8, 45) * k);
+      const sy = floor(random(0, max(1, h - sh)));
+      const dx = floor(random(-60, 60) * k);
+      if (abs(dx) > 3) {
+        ctx.drawImage(ctx.canvas, 0, sy, w, sh, dx, sy, w, sh);
+      }
+    }
+
+    // 2. Desfase de color / aberración en 1 o 2 bandas
+    if (random() > 0.2) {
+      const tintY = random(0, h - 30);
+      const tintH = random(12, 50) * k;
+      noStroke();
+      if (random() > 0.5) {
+        fill(255, 45, 60, random(40, 85)); // Rojo vigilancia
+      } else {
+        fill(45, 215, 255, random(35, 75)); // Cian desync
+      }
+      rect(0, tintY, w, tintH);
+    }
+
+    // 3. Scanlines marcadas (Opción C)
+    const cantLineas = floor(random(8, 20));
+    strokeWeight(max(1, 1.2 * k));
+    for (let i = 0; i < cantLineas; i++) {
+      const ly = random(h);
+      stroke(255, random(70, 180));
+      line(0, ly, w, ly);
+    }
+
+    // 4. Bloques de estática digital
+    noStroke();
+    const cantBloques = floor(random(4, 9));
+    for (let i = 0; i < cantBloques; i++) {
+      const bx = random(w * 0.05, w * 0.9);
+      const by = random(h * 0.05, h * 0.9);
+      const bw = random(20, 130) * k;
+      const bh = random(3, 14) * k;
+      fill(255, random(50, 140));
+      rect(bx, by, bw, bh);
+    }
+
+  } else {
+    // --- ESTADO BASE DE COLAPSO (glitch sutil e intermitente) ---
+    if (random() < 0.25) {
+      const sh = floor(random(4, 18) * k);
+      const sy = floor(random(0, max(1, h - sh)));
+      const dx = floor(random(-12, 12) * k);
+      if (abs(dx) > 2) {
+        ctx.drawImage(ctx.canvas, 0, sy, w, sh, dx, sy, w, sh);
+      }
+    }
+
+    if (random() < 0.35) {
+      strokeWeight(1);
+      const cantLineas = floor(random(1, 4));
+      for (let i = 0; i < cantLineas; i++) {
+        stroke(255, random(18, 48));
+        const ly = random(h);
+        line(0, ly, w, ly);
+      }
+    }
+  }
+
+  pop();
+}
+
