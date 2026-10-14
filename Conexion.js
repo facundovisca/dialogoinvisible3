@@ -209,3 +209,45 @@ function dibujarDestelloSuave(x, y, diam, alpha) {
   ctx.fill();
   ctx.restore();
 }
+
+function dibujarSeguimientoCelula(x, y, tam, alpha, mac = "", alphaMac = 0, dbm = "", alphaDbm = 0, k = 1) {
+  if (alpha <= 0 && alphaMac <= 0 && alphaDbm <= 0) return;
+  push();
+  if (alpha > 0) {
+    noFill();
+    stroke(255, 58, 48, alpha);
+    strokeWeight(max(1, 1.1 * k));
+    const mitad = max(12 * k, tam * 1.45);
+    const tramo = max(4 * k, mitad * 0.32);
+    const x0 = x - mitad;
+    const x1 = x + mitad;
+    const y0 = y - mitad;
+    const y1 = y + mitad;
+    line(x0, y0, x0 + tramo, y0);
+    line(x0, y0, x0, y0 + tramo);
+    line(x1, y0, x1 - tramo, y0);
+    line(x1, y0, x1, y0 + tramo);
+    line(x0, y1, x0 + tramo, y1);
+    line(x0, y1, x0, y1 - tramo);
+    line(x1, y1, x1 - tramo, y1);
+    line(x1, y1, x1, y1 - tramo);
+  }
+  const labelY = y + max(13 * k, tam * 1.9);
+  if (mac && alphaMac > 0) {
+    textFont("monospace");
+    textSize(9 * k);
+    textAlign(CENTER, TOP);
+    noStroke();
+    fill(255, 118, 105, 185 * alphaMac);
+    text(mac, x, labelY);
+  }
+  if (dbm && alphaDbm > 0) {
+    textFont("monospace");
+    textSize(8 * k);
+    textAlign(CENTER, TOP);
+    noStroke();
+    fill(255, 156, 145, 170 * alphaDbm);
+    text(dbm, x, labelY + 12 * k);
+  }
+  pop();
+}

@@ -3,6 +3,39 @@ let reverb;
 // 🎻 ENSAMBLE DE DRONES GRAVES (Re2, La, Re3) que respiran con el tráfico
 const dronesGrave = [];
 let filtroDrones;
+const dronesTensionColapso = [];
+const FREQS_TENSION_COLAPSO = [164.81, 174.61]; // Mi3 y Fa3: semitono con tensión sostenida
+const AMP_TENSION_COLAPSO = [0.018, 0.018];
+const dronesMediosColapso = [];
+const ESCALA_TENSION_COLAPSO = [
+  174.61, 196.00, 207.65, 220.00, 233.08, 246.94,
+  261.63, 277.18, 293.66, 311.13, 329.63, 349.23, 392.00
+];
+const PARAMS_DRONES_MEDIOS_COLAPSO = [
+  { indiceNota: 3, amp: 0.014, periodo: 13700, fase: 0.4 },
+  { indiceNota: 4, amp: 0.012, periodo: 18100, fase: 2.1 },
+  { indiceNota: 5, amp: 0.009, periodo: 22300, fase: 4.2 },
+  { indiceNota: 9, amp: 0.006, periodo: 26900, fase: 1.3 }
+];
+const dronesMelodicosColapso = [];
+const ESCALA_MELODICA_COLAPSO = [783.99, 880.00, 1046.50, 1174.66, 1396.91];
+const PARAMS_DRONES_MELODICOS_COLAPSO = [
+  { indiceNota: 1, amp: 0.005, periodo: 11900, fase: 0.8 },
+  { indiceNota: 3, amp: 0.004, periodo: 15700, fase: 2.7 }
+];
+let nivelDronesTension = 0;
+let ultimoActualizadoDronesTension = 0;
+let droneSubgraveColapso;
+let nivelSubgraveColapso = 0;
+let ruidoBlancoColapso;
+let filtroRuidoColapso;
+let proximoRuidoColapso = 0;
+let finRuidoColapso = 0;
+let colapsoSonoroAnterior = false;
+let ultimoActualizadoAmbienteColapso = 0;
+const FREQ_SUBGRAVE_COLAPSO = 41.2;
+const AMP_SUBGRAVE_COLAPSO = 0.022;
+const AMP_RUIDO_COLAPSO = 0.012;
 
 // 🎹 SÍNTESIS CRISTALINA POLIFÓNICA (Sine + Triángulo desafinado)
 const MAX_VOCES_PULSO = 12;          // más voces: con tráfico real las colas largas ya no se pisan
@@ -80,6 +113,151 @@ function asegurarFiltroDrones() {
     filtroDrones.res(0.4);
     if (reverb) reverb.process(filtroDrones);
   }
+}
+
+function iniciarDronesTensionColapso() {
+  if (dronesTensionColapso.length > 0) return;
+  for (const frecuencia of FREQS_TENSION_COLAPSO) {
+    const osc = new p5.Oscillator("sine");
+    osc.freq(frecuencia);
+    osc.amp(0);
+    osc.start();
+    dronesTensionColapso.push(osc);
+  }
+  for (const drone of PARAMS_DRONES_MEDIOS_COLAPSO) {
+    const osc = new p5.Oscillator("sine");
+    osc.freq(ESCALA_TENSION_COLAPSO[drone.indiceNota]);
+    osc.amp(0);
+    osc.start();
+    dronesMediosColapso.push({
+      ...drone,
+      osc,
+      proximoCambio: 0
+    });
+  }
+  for (const drone of PARAMS_DRONES_MELODICOS_COLAPSO) {
+    const osc = new p5.Oscillator("sine");
+    osc.freq(ESCALA_MELODICA_COLAPSO[drone.indiceNota]);
+    osc.amp(0);
+    osc.start();
+    dronesMelodicosColapso.push({
+      ...drone,
+      osc,
+      proximoCambio: 0
+    });
+  }
+}
+
+function iniciarAmbienteColapso() {
+  if (!droneSubgraveColapso) {
+    droneSubgraveColapso = new p5.Oscillator("sine");
+    droneSubgraveColapso.freq(FREQ_SUBGRAVE_COLAPSO);
+    droneSubgraveColapso.amp(0);
+    droneSubgraveColapso.start();
+  }
+
+  if (!ruidoBlancoColapso) {
+    filtroRuidoColapso = new p5.LowPass();
+    filtroRuidoColapso.freq(3200);
+    filtroRuidoColapso.res(0.35);
+    ruidoBlancoColapso = new p5.Noise("white");
+    ruidoBlancoColapso.disconnect();
+    ruidoBlancoColapso.connect(filtroRuidoColapso);
+    ruidoBlancoColapso.amp(0);
+    ruidoBlancoColapso.start();
+  }
+
+}
+
+function actualizarDronesTensionColapso(activa, tiempoColapso) {
+  if (dronesTensionColapso.length === 0) return;
+  const ahora = millis();
+  const dt = ultimoActualizadoDronesTension > 0
+    ? min(0.1, (ahora - ultimoActualizadoDronesTension) / 1000)
+    : 0;
+  ultimoActualizadoDronesTension = ahora;
+  const nivelObjetivo = activa ? 1 : 0;
+  nivelDronesTension += (nivelObjetivo - nivelDronesTension) * (1 - Math.exp(-dt / 1.2));
+
+  for (let i = 0; i < dronesTensionColapso.length; i++) {
+    dronesTensionColapso[i].amp(AMP_TENSION_COLAPSO[i] * nivelDronesTension);
+  }
+  for (const drone of dronesMediosColapso) {
+    if (activa && ahora >= drone.proximoCambio) {
+      const salto = random() < 0.24 ? random([-3, -2, 2, 3]) : random([-1, 1]);
+      const indiceTentativo = drone.indiceNota + salto;
+      const direccion = indiceTentativo < 0 || indiceTentativo >= ESCALA_TENSION_COLAPSO.length
+        ? -Math.sign(salto)
+        : Math.sign(salto);
+      drone.indiceNota = constrain(
+        drone.indiceNota + Math.abs(salto) * direccion,
+        0,
+        ESCALA_TENSION_COLAPSO.length - 1
+      );
+      drone.osc.freq(ESCALA_TENSION_COLAPSO[drone.indiceNota], random(1.4, 3.2));
+      drone.proximoCambio = ahora + random(1800, 5600);
+    }
+    const respiracion = 0.78 + 0.22 * (1 + Math.sin(
+      TWO_PI * millis() / drone.periodo + drone.fase
+    )) / 2;
+    drone.osc.amp(drone.amp * nivelDronesTension * respiracion);
+  }
+  for (const drone of dronesMelodicosColapso) {
+    if (activa && ahora >= drone.proximoCambio) {
+      const salto = random() < 0.3 ? random([-2, 2]) : random([-1, 1]);
+      const indiceTentativo = drone.indiceNota + salto;
+      const direccion = indiceTentativo < 0 || indiceTentativo >= ESCALA_MELODICA_COLAPSO.length
+        ? -Math.sign(salto)
+        : Math.sign(salto);
+      drone.indiceNota = constrain(
+        drone.indiceNota + Math.abs(salto) * direccion,
+        0,
+        ESCALA_MELODICA_COLAPSO.length - 1
+      );
+      drone.osc.freq(ESCALA_MELODICA_COLAPSO[drone.indiceNota], random(2.8, 5.5));
+      drone.proximoCambio = ahora + random(2600, 5800);
+    }
+    const respiracion = 0.82 + 0.18 * (1 + Math.sin(
+      TWO_PI * millis() / drone.periodo + drone.fase
+    )) / 2;
+    drone.osc.amp(drone.amp * nivelDronesTension * respiracion);
+  }
+}
+
+function actualizarAmbienteColapso(activa) {
+  if (!droneSubgraveColapso || !ruidoBlancoColapso) return;
+  const ahora = millis();
+  const dt = ultimoActualizadoAmbienteColapso > 0
+    ? min(0.1, (ahora - ultimoActualizadoAmbienteColapso) / 1000)
+    : 0;
+  ultimoActualizadoAmbienteColapso = ahora;
+  const nivelObjetivo = activa ? 1 : 0;
+  nivelSubgraveColapso += (nivelObjetivo - nivelSubgraveColapso) *
+    (1 - Math.exp(-dt / 1.5));
+  droneSubgraveColapso.amp(AMP_SUBGRAVE_COLAPSO * nivelSubgraveColapso);
+  if (!activa) {
+    ruidoBlancoColapso.amp(0, 0.04);
+    proximoRuidoColapso = 0;
+    finRuidoColapso = 0;
+    colapsoSonoroAnterior = false;
+    return;
+  }
+
+  if (!colapsoSonoroAnterior) {
+    proximoRuidoColapso = ahora + random(1200, 2600);
+    finRuidoColapso = 0;
+    colapsoSonoroAnterior = true;
+  }
+  if (finRuidoColapso > 0 && ahora >= finRuidoColapso) {
+    ruidoBlancoColapso.amp(0, 0.035);
+    finRuidoColapso = 0;
+    proximoRuidoColapso = ahora + random(2200, 4800);
+  }
+  if (finRuidoColapso === 0 && ahora >= proximoRuidoColapso) {
+    ruidoBlancoColapso.amp(AMP_RUIDO_COLAPSO, 0.008);
+    finRuidoColapso = ahora + random(55, 115);
+  }
+
 }
 
 // ---------------- 2. PROBES CRISTALINOS (SINE + TRIÁNGULO DESAFINADO) ----------------
@@ -369,7 +547,7 @@ function reiniciarSonido() {
 let ritmoColectivoSuave = 0;
 let ultimoRitmoColectivo = 0;
 
-function actualizarCampo(densidad, dispositivosActivos = 0) {
+function actualizarCampo(densidad, dispositivosActivos = 0, colapso = false, parpadeoNegro = 0, tiempoColapso = 0) {
   const vGrave = (typeof params !== "undefined" && params.volGrave !== undefined) ? params.volGrave : 0.7;
   const vDrone = (typeof params !== "undefined" && params.volDrone !== undefined) ? params.volDrone : 0.7;
 
@@ -377,12 +555,13 @@ function actualizarCampo(densidad, dispositivosActivos = 0) {
   const factorDucking = map(densidad, 0, 1, 0.35, 1.15, true);
 
   if (gainConexionesMaster && typeof params !== "undefined" && params.volConexiones !== undefined) {
-    gainConexionesMaster.amp(params.volConexiones, 0.05);
+    gainConexionesMaster.amp(colapso ? 0 : params.volConexiones, 0.05);
   }
   if (gainProbesMaster && typeof params !== "undefined" && params.volProbes !== undefined) {
-    gainProbesMaster.amp(params.volProbes, 0.05);
+    gainProbesMaster.amp(colapso ? 0 : params.volProbes, 0.05);
   }
-
+  actualizarDronesTensionColapso(colapso, tiempoColapso);
+  actualizarAmbienteColapso(colapso);
   if (filtroDrones) {
     const corteFiltro = map(densidad, 0, 1, 380, 750, true);
     filtroDrones.freq(corteFiltro);
@@ -398,6 +577,14 @@ function actualizarCampo(densidad, dispositivosActivos = 0) {
 
   for (let i = 0; i < dronesGrave.length; i++) {
     const d = dronesGrave[i];
+    if (colapso) {
+      const pulsoBlink = parpadeoNegro > 0 ? 1 : 0;
+      const ampFinal = i === 0
+        ? d.maxAmp * vGrave * pulsoBlink
+        : i === 1 ? d.maxAmp * vDrone * pulsoBlink : 0;
+      d.osc.amp(ampFinal, 0.04);
+      continue;
+    }
     const marea = map(sin(millis() * 0.000024 + d.seed), -1, 1, 0.6, 1.0);
     const ampFinal = d.maxAmp * factorDucking * marea * pulsoColectivo * ((i === 0) ? vGrave : vDrone);
     d.osc.amp(ampFinal, 0.2);

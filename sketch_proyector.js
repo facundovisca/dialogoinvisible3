@@ -6,6 +6,9 @@ const SIN_SENAL_MS = 2000;
 
 let entidadesRecibidas = [];
 let conexionesRecibidas = [];
+let colapsoActivo = false;
+let parpadeoNegro = 0;
+let seguimientosActuales = [];
 
 // Resolución del notebook que genera los datos (llega en cada SYNC_FRAME).
 let anchoOrigen = 1440;
@@ -28,6 +31,9 @@ function setup() {
       ultimoFrame = performance.now();
       entidadesRecibidas = data.entidades || [];
       conexionesRecibidas = data.conexiones || [];
+      colapsoActivo = Boolean(data.colapso && data.colapso.activo);
+      parpadeoNegro = data.colapso ? data.colapso.parpadeoNegro || 0 : 0;
+      seguimientosActuales = data.colapso ? data.colapso.seguimientos || [] : [];
       if (data.anchoOrigen) anchoOrigen = data.anchoOrigen;
       if (data.altoOrigen) altoOrigen = data.altoOrigen;
       if (data.params) {
@@ -36,6 +42,9 @@ function setup() {
     } else if (data.tipo === 'LIMPIAR_TODO') {
       entidadesRecibidas = [];
       conexionesRecibidas = [];
+      colapsoActivo = false;
+      parpadeoNegro = 0;
+      seguimientosActuales = [];
     }
   };
 }
@@ -44,9 +53,12 @@ function draw() {
   background(0);
 
   if (ultimoFrame > 0 && performance.now() - ultimoFrame > SIN_SENAL_MS &&
-      (entidadesRecibidas.length > 0 || conexionesRecibidas.length > 0)) {
+      (entidadesRecibidas.length > 0 || conexionesRecibidas.length > 0 || colapsoActivo || parpadeoNegro > 0)) {
     entidadesRecibidas = [];      // el fondo translúcido se encarga del fundido a negro
     conexionesRecibidas = [];
+    colapsoActivo = false;
+    parpadeoNegro = 0;
+    seguimientosActuales = [];
   }
 
   // Factor de escala proyector / notebook: tamaños y grosores se ven igual en cualquier resolución.
@@ -57,43 +69,49 @@ function draw() {
   for (const e of entidadesRecibidas) {
     const px = e.nx * width;
     const py = e.ny * height;
+    const interferencia = colapsoActivo ? e.interferencia : null;
+    const gx = px;
+    const gy = py;
     const escala = e.escala !== undefined ? e.escala : 1.0;
     const pulsoRespiracion = e.pulsoRespiracion !== undefined ? e.pulsoRespiracion : 1;
+    const edadDibujo = colapsoActivo ? 1 : e.edad || 0;
     const intensidadRespiracion = 0.82 + (pulsoRespiracion - 0.95) * 3.6;
     const tamEscalado = e.tamBase * params.tamanoBase * e.factorCercania * escala * k * pulsoRespiracion;
     const brilloSonoro = e.brilloSonoro || 0;
 
     const maduracion = constrain(e.madurez || 0, 0, 1);
 
-    const brilloEdad = brilloPorEdad(e.edad || 0);      // color: verde vivo (joven) → azul sereno (vieja)
+    const brilloEdad = brilloPorEdad(edadDibujo);
 
     // Halo difuso y orgánico (mismo degradado que en el notebook)
     const potenciaHalo = map(maduracion, 0, 1, 14, 34);
-    const aHalo = potenciaHalo * e.opacidad * params.brilloParticulas * 0.38 * brilloEdad;
+    const alphaInterferencia = interferencia ? 0.72 + interferencia.intensidad * 0.28 : 1;
+    const aHalo = potenciaHalo * e.opacidad * params.brilloParticulas * 0.38 * brilloEdad * alphaInterferencia;
     if (HALO_ORGANICO) {
-      dibujarHaloOrganico(px, py, tamEscalado, e.edad || 0, aHalo * 7.0 * intensidadRespiracion, e.seed || 0, millis());
+      dibujarHaloOrganico(gx, gy, tamEscalado, edadDibujo, aHalo * 7.0 * intensidadRespiracion, e.seed || 0, millis());
     } else {
-      const [r, g, b] = colorPorEdad(e.edad || 0);
+      const [r, g, b] = colorPorEdad(edadDibujo);
       for (let i = 5; i > 0; i--) {
         fill(r, g, b, aHalo);
-        ellipse(px, py, tamEscalado * i * 1.35);
+        ellipse(gx, gy, tamEscalado * i * 1.35);
       }
     }
 
     const opacidad = min(1.0, e.opacidad);
     const tamNucleo = max(2.8 * k, tamEscalado * map(brilloSonoro, 0, 1, 0.55, 0.9));
     dibujarNucleoSuave(
-      px, py, tamNucleo, e.edad || 0,
-      210 * opacidad * params.brilloParticulas * intensidadRespiracion,
+      gx, gy, tamNucleo, edadDibujo,
+      210 * opacidad * params.brilloParticulas * intensidadRespiracion * alphaInterferencia,
       e.seed || 0
     );
 
-    if (brilloSonoro > 0.05 && opacidad > 0) {
+    if (!colapsoActivo && brilloSonoro > 0.05 && opacidad > 0) {
       const alphaNucleo = constrain(
         brilloSonoro * 220 * opacidad * params.brilloParticulas, 0, 255
       );
-      dibujarDestelloSuave(px, py, tamNucleo * 3.0, alphaNucleo);
+      dibujarDestelloSuave(gx, gy, tamNucleo * 3.0, alphaNucleo);
     }
+
   }
 
   // 2. Conexiones: misma función de dibujo y de opacidad que el notebook (Conexion.js)
@@ -115,17 +133,42 @@ function draw() {
   }
 
   // 3. Etiquetas de MAC (después de los filamentos, igual que en el notebook)
-  for (const e of entidadesRecibidas) {
-    if (!e.etiqueta) continue;
-    const escala = e.escala !== undefined ? e.escala : 1.0;
-    const tam = e.tamBase * params.tamanoBase * e.factorCercania * escala * k;
-    const [cr, cg, cb] = colorPorEdad(e.edad || 0);
-    dibujarEtiquetaMac(
-      e.etiqueta, e.etiquetaLetras || 0,
-      e.nx * width, e.ny * height + max(tam * 1.1, tam * 0.9) + 12 * k,
-      (e.etiquetaAlpha || 0) * min(1.0, e.opacidad) * params.brilloParticulas,
-      cr, cg, cb, k
-    );
+  if (!colapsoActivo) {
+    for (const e of entidadesRecibidas) {
+      if (!e.etiqueta) continue;
+      const escala = e.escala !== undefined ? e.escala : 1.0;
+      const tam = e.tamBase * params.tamanoBase * e.factorCercania * escala * k;
+      const [cr, cg, cb] = colorPorEdad(e.edad || 0);
+      dibujarEtiquetaMac(
+        e.etiqueta, e.etiquetaLetras || 0,
+        e.nx * width, e.ny * height + max(tam * 1.1, tam * 0.9) + 12 * k,
+        (e.etiquetaAlpha || 0) * min(1.0, e.opacidad) * params.brilloParticulas,
+        cr, cg, cb, k
+      );
+    }
+  }
+
+  if (colapsoActivo && parpadeoNegro > 0) {
+    push();
+    noStroke();
+    fill(0, parpadeoNegro);
+    rect(0, 0, width, height);
+    pop();
+  }
+  if (colapsoActivo) {
+    for (const seguimiento of seguimientosActuales) {
+      dibujarSeguimientoCelula(
+        seguimiento.nx * width,
+        seguimiento.ny * height,
+        seguimiento.tam * k,
+        seguimiento.alpha,
+        seguimiento.mac,
+        seguimiento.alphaMac,
+        seguimiento.dbm,
+        seguimiento.alphaDbm,
+        k
+      );
+    }
   }
 }
 
