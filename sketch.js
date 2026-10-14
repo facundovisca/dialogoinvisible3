@@ -961,7 +961,7 @@ function actualizarConsola(ahora) {
     const red = !CONSOLA_MUESTRA_SSID ? "" :
       (e.ssid && e.ssid !== "BROADCAST" ? `  |  [${e.ssid}]` : "  |  <PROBE SEARCH>");
     const identidad = String(e.mac).toUpperCase();
-    el.textContent = `${identidad}  |  ${Math.round(e.rssi)} dBm  |  PETICIONES ${e.cantidadPeticiones}${red}`;   // textContent: nada se interpreta como HTML
+    el.textContent = `${identidad}  |  ${Math.round(e.rssi)} dBm${red}`;   // textContent: nada se interpreta como HTML
     const [r, g, b] = colorPorEdad(e.edadColor);
     el.style.color = `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
     el.style.opacity = (0.7 + 0.3 * Math.min(1, e.brilloSonoro)).toFixed(2);
