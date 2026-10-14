@@ -342,8 +342,9 @@ function dispararPulsoCrecimiento(maduracion = 0, rssi = -70, frecuenciaNota = 1
     tOsc.pan(panVal, 0.03);
   }
 
-  sOsc.freq(frecuenciaNota, 0.02);
-  tOsc.freq(frecuenciaNota * 1.003, 0.02); // Leve desafinación para cuerpo de campana
+  const frecuenciaFinal = colapsoActivo ? frecuenciaNota / 4 : frecuenciaNota;
+  sOsc.freq(frecuenciaFinal, 0.02);
+  tOsc.freq(frecuenciaFinal * 1.003, 0.02); // Leve desafinación para cuerpo de campana
 
   // Amplitud = potencia (dB) del probe. La madurez ya no cambia el volumen: define la duración de la cola.
   const gananciaUsuario = gainProbesMaster ? 1.0 :
@@ -555,10 +556,10 @@ function actualizarCampo(densidad, dispositivosActivos = 0, colapso = false, par
   const factorDucking = map(densidad, 0, 1, 0.35, 1.15, true);
 
   if (gainConexionesMaster && typeof params !== "undefined" && params.volConexiones !== undefined) {
-    gainConexionesMaster.amp(colapso ? 0 : params.volConexiones, 0.05);
+    gainConexionesMaster.amp(params.volConexiones, 0.05);
   }
   if (gainProbesMaster && typeof params !== "undefined" && params.volProbes !== undefined) {
-    gainProbesMaster.amp(colapso ? 0 : params.volProbes, 0.05);
+    gainProbesMaster.amp(params.volProbes, 0.05);
   }
   actualizarDronesTensionColapso(colapso, tiempoColapso);
   actualizarAmbienteColapso(colapso);

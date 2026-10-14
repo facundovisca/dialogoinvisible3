@@ -750,9 +750,9 @@ function reproducirCelula(madre) {
     mapEntidades.set(id, hija);
 
     // Cada hija suena con su nota propia, escalonadas como un pequeño arpegio.
-    if (!colapsoActivo && typeof dispararPulsoCrecimiento === "function") {
+    if (typeof dispararPulsoCrecimiento === "function") {
       const sonar = () => {
-        if (!colapsoActivo) dispararPulsoCrecimiento(0.5, hija.rssi, hija.frecuencia, hija.x / width, hija);
+        dispararPulsoCrecimiento(0.5, hija.rssi, hija.frecuencia, hija.x / width, hija);
       };
       if (i === 0) sonar();
       else programar(sonar, i * 110);
@@ -799,7 +799,7 @@ function procesarMensajeSerial(str) {
       if (existente.puedeReproducirse()) {
         reproducirCelula(existente);
       } else {
-        if (!colapsoActivo && typeof dispararPulsoCrecimiento === "function") {
+        if (typeof dispararPulsoCrecimiento === "function") {
           dispararPulsoCrecimiento(existente.maduracion, rssi, existente.frecuencia, existente.x / width, existente);
         }
       }
@@ -812,7 +812,7 @@ function procesarMensajeSerial(str) {
       nuevaEntidad.ssid = ssid;
       mapEntidades.set(mac, nuevaEntidad);
 
-      if (!colapsoActivo && typeof dispararPulsoCrecimiento === "function") {
+      if (typeof dispararPulsoCrecimiento === "function") {
         dispararPulsoCrecimiento(0.0, rssi, nuevaEntidad.frecuencia, x / width, nuevaEntidad);
       }
     }

@@ -262,7 +262,7 @@ class Entidad {
     // Las jóvenes son rápidas y las viejas lentas (movimiento libre).
     this.velBase = lerp(this.rangoVelRapida, this.rangoVelLenta, this.edad);
 
-    if (params.modoOrbital) {
+    if (params.modoOrbital || colapsoActivo) {
       this.orbitar(dt);
     } else {
       this.tiempoRuido += 0.004 * params.velGlobal * k;
