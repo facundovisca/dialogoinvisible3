@@ -258,71 +258,84 @@ function aplicarEfectoGlitch(ruidoFuerte = false, k = 1) {
   const w = width;
   const h = height;
 
+  const multIntensidad = (typeof params !== "undefined" && params.glitchIntensidad !== undefined)
+    ? params.glitchIntensidad : 1.0;
+  const multScanlines = (typeof params !== "undefined" && params.glitchScanlines !== undefined)
+    ? params.glitchScanlines : 1.0;
+
+  if (multIntensidad <= 0.01 && multScanlines <= 0.01) return;
+
   push();
 
   if (ruidoFuerte) {
     // --- IMPACTO FUERTE (acoplado al pulso de ruido blanco del audio) ---
     // 1. Rebanadas horizontales desplazadas (Opción A)
-    const cantFranjas = floor(random(6, 12));
-    for (let i = 0; i < cantFranjas; i++) {
-      const sh = floor(random(8, 45) * k);
-      const sy = floor(random(0, max(1, h - sh)));
-      const dx = floor(random(-60, 60) * k);
-      if (abs(dx) > 3) {
-        ctx.drawImage(ctx.canvas, 0, sy, w, sh, dx, sy, w, sh);
+    if (multIntensidad > 0.01) {
+      const cantFranjas = floor(random(6, 12) * multIntensidad);
+      for (let i = 0; i < cantFranjas; i++) {
+        const sh = floor(random(8, 45) * k);
+        const sy = floor(random(0, max(1, h - sh)));
+        const dx = floor(random(-60, 60) * k * multIntensidad);
+        if (abs(dx) > 3) {
+          ctx.drawImage(ctx.canvas, 0, sy, w, sh, dx, sy, w, sh);
+        }
       }
     }
 
     // 2. Desfase de color / aberración en 1 o 2 bandas
-    if (random() > 0.2) {
+    if (multScanlines > 0.01 && random() > (1 - 0.8 * min(1, multScanlines))) {
       const tintY = random(0, h - 30);
       const tintH = random(12, 50) * k;
       noStroke();
       if (random() > 0.5) {
-        fill(255, 45, 60, random(40, 85)); // Rojo vigilancia
+        fill(255, 45, 60, random(40, 85) * multScanlines); // Rojo vigilancia
       } else {
-        fill(45, 215, 255, random(35, 75)); // Cian desync
+        fill(45, 215, 255, random(35, 75) * multScanlines); // Cian desync
       }
       rect(0, tintY, w, tintH);
     }
 
     // 3. Scanlines marcadas (Opción C)
-    const cantLineas = floor(random(8, 20));
-    strokeWeight(max(1, 1.2 * k));
-    for (let i = 0; i < cantLineas; i++) {
-      const ly = random(h);
-      stroke(255, random(70, 180));
-      line(0, ly, w, ly);
+    if (multScanlines > 0.01) {
+      const cantLineas = floor(random(8, 20) * multScanlines);
+      strokeWeight(max(1, 1.2 * k));
+      for (let i = 0; i < cantLineas; i++) {
+        const ly = random(h);
+        stroke(255, constrain(random(70, 180) * multScanlines, 0, 255));
+        line(0, ly, w, ly);
+      }
     }
 
     // 4. Bloques de estática digital
-    noStroke();
-    const cantBloques = floor(random(4, 9));
-    for (let i = 0; i < cantBloques; i++) {
-      const bx = random(w * 0.05, w * 0.9);
-      const by = random(h * 0.05, h * 0.9);
-      const bw = random(20, 130) * k;
-      const bh = random(3, 14) * k;
-      fill(255, random(50, 140));
-      rect(bx, by, bw, bh);
+    if (multIntensidad > 0.01) {
+      noStroke();
+      const cantBloques = floor(random(4, 9) * multIntensidad);
+      for (let i = 0; i < cantBloques; i++) {
+        const bx = random(w * 0.05, w * 0.9);
+        const by = random(h * 0.05, h * 0.9);
+        const bw = random(20, 130) * k;
+        const bh = random(3, 14) * k;
+        fill(255, constrain(random(50, 140) * multIntensidad, 0, 255));
+        rect(bx, by, bw, bh);
+      }
     }
 
   } else {
     // --- ESTADO BASE DE COLAPSO (glitch sutil e intermitente) ---
-    if (random() < 0.25) {
+    if (multIntensidad > 0.01 && random() < 0.25 * multIntensidad) {
       const sh = floor(random(4, 18) * k);
       const sy = floor(random(0, max(1, h - sh)));
-      const dx = floor(random(-12, 12) * k);
+      const dx = floor(random(-12, 12) * k * multIntensidad);
       if (abs(dx) > 2) {
         ctx.drawImage(ctx.canvas, 0, sy, w, sh, dx, sy, w, sh);
       }
     }
 
-    if (random() < 0.35) {
+    if (multScanlines > 0.01 && random() < 0.35 * multScanlines) {
       strokeWeight(1);
-      const cantLineas = floor(random(1, 4));
+      const cantLineas = floor(random(1, 4) * multScanlines);
       for (let i = 0; i < cantLineas; i++) {
-        stroke(255, random(18, 48));
+        stroke(255, constrain(random(18, 48) * multScanlines, 0, 255));
         const ly = random(h);
         line(0, ly, w, ly);
       }

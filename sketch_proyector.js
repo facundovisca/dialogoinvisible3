@@ -19,7 +19,9 @@ const params = {
   distConexion: 160,
   opacidadLineas: 3.0,
   tamanoBase: 1.0,
-  brilloParticulas: 1.0
+  brilloParticulas: 1.0,
+  glitchIntensidad: 1.0,
+  glitchScanlines: 1.0
 };
 
 function setup() {

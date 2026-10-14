@@ -35,6 +35,11 @@ const params = {
   volProbes: 1.0,
   volConexiones: 1.0,
   pulsosEntidades: true,
+  glitchIntensidad: 1.0,
+  glitchScanlines: 1.0,
+  volRuidoVigilancia: 1.0,
+  volTensionVigilancia: 1.0,
+  freqRuidoVigilancia: 1.0,
 };
 
 let sDistConexion, sProbConexion, sVelGlobal, sTamanoBase, sOpacidadLineas, sBrilloParticulas, sTamNacimiento, sTamMaximo, sCrecimientoProbe;
@@ -45,6 +50,7 @@ const MAX_LINEAS_SERIAL_POR_FRAME = 200;
 let sIntervaloMock;
 let sVolDrone, sVolGrave;
 let sVolProbes, sVolConexiones;
+let sGlitchIntensidad, sGlitchScanlines, sVolRuidoVig, sVolTensionVig, sFreqRuidoVig;
 let cbPulsosEntidades, cbVerParticulas;
 let btnLimpiar;
 
@@ -173,10 +179,11 @@ function setup() {
   };
 
   guiDiv = createDiv();
+  guiDiv.id("gui-panel");
   guiDiv.position(20, 55);
-  guiDiv.style("background", "rgba(0, 0, 0, 0.88)");
+  guiDiv.style("background", "rgba(0, 0, 0, 0.90)");
   guiDiv.style("border", "1px solid #ffffff");
-  guiDiv.style("padding", "15px");
+  guiDiv.style("padding", "14px 10px 14px 14px");
   guiDiv.style("color", "white");
   guiDiv.style("font-family", "monospace");
   guiDiv.style("font-size", "12px");
@@ -184,6 +191,13 @@ function setup() {
   guiDiv.style("flex-direction", "column");
   guiDiv.style("gap", "4px");
   guiDiv.style("z-index", "100");
+  guiDiv.style("max-height", "calc(100vh - 85px)");
+  guiDiv.style("overflow-y", "auto");
+  guiDiv.style("overflow-x", "hidden");
+  guiDiv.style("box-sizing", "border-box");
+  guiDiv.style("width", "325px");
+  guiDiv.style("scrollbar-width", "thin");
+  guiDiv.style("scrollbar-color", "#666 #111");
 
   function crearControl(nombre, min, max, val, step) {
     const contenedor = createDiv();
@@ -260,6 +274,13 @@ function setup() {
     operacion.catch(error => console.error("No se pudo cambiar el estado global del audio:", error));
   });
 
+  createDiv("<br><b style='color:#ff5b52'>MODO VIGILANCIA / GLITCH [V]</b>").parent(guiDiv);
+  sGlitchIntensidad = crearControl("Glitch Int. [A]", 0, 3, params.glitchIntensidad, 0.1);
+  sGlitchScanlines = crearControl("Scanlines [C]", 0, 3, params.glitchScanlines, 0.1);
+  sVolRuidoVig = crearControl("Vol. Ruido", 0, 3, params.volRuidoVigilancia, 0.1);
+  sVolTensionVig = crearControl("Vol. Tensión", 0, 3, params.volTensionVigilancia, 0.1);
+  sFreqRuidoVig = crearControl("Freq. Ráfagas", 0.2, 3, params.freqRuidoVigilancia, 0.1);
+
   createDiv("<br><b>ACCIONES</b>").parent(guiDiv);
   btnLimpiar = createButton("REINICIAR OBRA [R]");
   btnLimpiar.parent(guiDiv);
@@ -315,6 +336,14 @@ function draw() {
   params.volConexiones = sVolConexiones.value();
   params.pulsosEntidades = cbPulsosEntidades.checked();
   params.mostrarParticulasEnNotebook = cbVerParticulas.checked();
+
+  if (sGlitchIntensidad) {
+    params.glitchIntensidad = sGlitchIntensidad.value();
+    params.glitchScanlines = sGlitchScanlines.value();
+    params.volRuidoVigilancia = sVolRuidoVig.value();
+    params.volTensionVigilancia = sVolTensionVig.value();
+    params.freqRuidoVigilancia = sFreqRuidoVig.value();
+  }
 
   background(0);
   actualizarLogicaGlobal();
@@ -686,7 +715,9 @@ function actualizarLogicaGlobal() {
       distConexion: params.distConexion,
       opacidadLineas: params.opacidadLineas,
       tamanoBase: params.tamanoBase,
-      brilloParticulas: params.brilloParticulas
+      brilloParticulas: params.brilloParticulas,
+      glitchIntensidad: params.glitchIntensidad,
+      glitchScanlines: params.glitchScanlines
     }
   });
 

@@ -180,8 +180,11 @@ function actualizarDronesTensionColapso(activa, tiempoColapso) {
   const nivelObjetivo = activa ? 1 : 0;
   nivelDronesTension += (nivelObjetivo - nivelDronesTension) * (1 - Math.exp(-dt / 1.2));
 
+  const vTension = (typeof params !== "undefined" && params.volTensionVigilancia !== undefined)
+    ? params.volTensionVigilancia : 1.0;
+
   for (let i = 0; i < dronesTensionColapso.length; i++) {
-    dronesTensionColapso[i].amp(AMP_TENSION_COLAPSO[i] * nivelDronesTension);
+    dronesTensionColapso[i].amp(AMP_TENSION_COLAPSO[i] * nivelDronesTension * vTension);
   }
   for (const drone of dronesMediosColapso) {
     if (activa && ahora >= drone.proximoCambio) {
@@ -201,7 +204,7 @@ function actualizarDronesTensionColapso(activa, tiempoColapso) {
     const respiracion = 0.78 + 0.22 * (1 + Math.sin(
       TWO_PI * millis() / drone.periodo + drone.fase
     )) / 2;
-    drone.osc.amp(drone.amp * nivelDronesTension * respiracion);
+    drone.osc.amp(drone.amp * nivelDronesTension * respiracion * vTension);
   }
   for (const drone of dronesMelodicosColapso) {
     if (activa && ahora >= drone.proximoCambio) {
@@ -221,7 +224,7 @@ function actualizarDronesTensionColapso(activa, tiempoColapso) {
     const respiracion = 0.82 + 0.18 * (1 + Math.sin(
       TWO_PI * millis() / drone.periodo + drone.fase
     )) / 2;
-    drone.osc.amp(drone.amp * nivelDronesTension * respiracion);
+    drone.osc.amp(drone.amp * nivelDronesTension * respiracion * vTension);
   }
 }
 
@@ -236,6 +239,13 @@ function actualizarAmbienteColapso(activa) {
     return;
   }
 
+  const vTension = (typeof params !== "undefined" && params.volTensionVigilancia !== undefined)
+    ? params.volTensionVigilancia : 1.0;
+  const vRuido = (typeof params !== "undefined" && params.volRuidoVigilancia !== undefined)
+    ? params.volRuidoVigilancia : 1.0;
+  const fRuido = (typeof params !== "undefined" && params.freqRuidoVigilancia !== undefined && params.freqRuidoVigilancia > 0.05)
+    ? params.freqRuidoVigilancia : 1.0;
+
   const dt = ultimoActualizadoAmbienteColapso > 0
     ? min(0.1, (ahora - ultimoActualizadoAmbienteColapso) / 1000)
     : 0;
@@ -244,7 +254,7 @@ function actualizarAmbienteColapso(activa) {
   if (droneSubgraveColapso) {
     nivelSubgraveColapso += (nivelObjetivo - nivelSubgraveColapso) *
       (1 - Math.exp(-dt / 1.5));
-    droneSubgraveColapso.amp(AMP_SUBGRAVE_COLAPSO * nivelSubgraveColapso);
+    droneSubgraveColapso.amp(AMP_SUBGRAVE_COLAPSO * nivelSubgraveColapso * vTension);
   }
 
   if (!colapsoSonoroAnterior) {
@@ -256,10 +266,10 @@ function actualizarAmbienteColapso(activa) {
     if (ruidoBlancoColapso) ruidoBlancoColapso.amp(0, 0.035);
     finRuidoColapso = 0;
     colapsoRuidoActivoFlag = false;
-    proximoRuidoColapso = ahora + random(2200, 4800);
+    proximoRuidoColapso = ahora + random(2200, 4800) / fRuido;
   }
   if (finRuidoColapso === 0 && ahora >= proximoRuidoColapso) {
-    if (ruidoBlancoColapso) ruidoBlancoColapso.amp(AMP_RUIDO_COLAPSO, 0.008);
+    if (ruidoBlancoColapso) ruidoBlancoColapso.amp(AMP_RUIDO_COLAPSO * vRuido, 0.008);
     finRuidoColapso = ahora + random(65, 125);
     colapsoRuidoActivoFlag = true;
   }
@@ -271,10 +281,15 @@ function estaActivoRuidoColapso() {
 
 function dispararRuidoColapsoInmediato() {
   const ahora = millis();
-  if (ruidoBlancoColapso) ruidoBlancoColapso.amp(AMP_RUIDO_COLAPSO, 0.008);
+  const vRuido = (typeof params !== "undefined" && params.volRuidoVigilancia !== undefined)
+    ? params.volRuidoVigilancia : 1.0;
+  const fRuido = (typeof params !== "undefined" && params.freqRuidoVigilancia !== undefined && params.freqRuidoVigilancia > 0.05)
+    ? params.freqRuidoVigilancia : 1.0;
+
+  if (ruidoBlancoColapso) ruidoBlancoColapso.amp(AMP_RUIDO_COLAPSO * vRuido, 0.008);
   finRuidoColapso = ahora + random(90, 150);
   colapsoRuidoActivoFlag = true;
-  proximoRuidoColapso = finRuidoColapso + random(1800, 3600);
+  proximoRuidoColapso = finRuidoColapso + random(1800, 3600) / fRuido;
   colapsoSonoroAnterior = true;
 }
 

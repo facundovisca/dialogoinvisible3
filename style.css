@@ -89,3 +89,18 @@ main {
     width: 0;
     height: 0;
 }
+
+/* Scrollbar estilizado para el panel de controles */
+#gui-panel::-webkit-scrollbar {
+    width: 6px;
+}
+#gui-panel::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.4);
+}
+#gui-panel::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 3px;
+}
+#gui-panel::-webkit-scrollbar-thumb:hover {
+    background: #888;
+}
