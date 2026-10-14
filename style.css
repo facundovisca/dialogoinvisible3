@@ -1,0 +1,91 @@
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: #000000;
+    font-family: monospace;
+    color: #939191;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+canvas {
+    display: block;
+    position: relative;
+    z-index: 0;
+}
+
+main {
+    position: relative;
+    z-index: 0;
+}
+
+/* 📡 LOG DE DATOS CRUDO / OPERATIVO */
+#serial-log {
+    position: absolute;
+    top: 140px;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(800px, calc(100vw - 32px));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 12px 24px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    pointer-events: none;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    z-index: 10;
+}
+
+#serial-log-header {
+    position: absolute;
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(100%, 800px);
+    padding: 8px 16px;
+    color: #f0f0f0;
+    font-size: 22px;
+    font-family: monospace;
+    line-height: 1.5;
+    text-align: center;
+    pointer-events: none;
+    z-index: 10;
+}
+
+#serial-log-header > div:first-child {
+    margin-bottom: 0;
+    padding: 0 8px;
+}
+
+#serial-log-count {
+    margin: 0;
+    padding: 2px 8px;
+    color: #78ff9a;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.log-entry {
+    color: #716c6c;
+    font-size: 20px;
+    font-family: monospace;
+    width: 100%;
+    margin: 0;
+    padding: 2px 8px;
+    text-align: center;
+    white-space: nowrap;
+}
+
+#serial-log::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+}
