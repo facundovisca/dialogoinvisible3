@@ -5,10 +5,10 @@ function hashTexto(str) {
   return h >>> 0;
 }
 
-// Edad: de 0 (recién nacida) a 1 (vieja) en este tiempo de vida. Las jóvenes son rápidas y verdes;
-// las viejas, lentas y azules. Es tiempo real desde el nacimiento (no depende de los probes).
-const ESCALA_EDAD_S = 150;
-const PETICIONES_COLOR_MAXIMO = 20;
+// Edad: de 0 (recién nacida) a 1 (vieja) en este tiempo de vida. Las jóvenes son rápidas y del color inicio;
+// las viejas, lentas y del color final. Es tiempo real desde el nacimiento (no depende de los probes).
+const ESCALA_EDAD_S = 105; // 30% menos que los 150s originales
+const PETICIONES_COLOR_MAXIMO = 14;
 
 // Etiqueta con la MAC: se tipea al nacer y se borra tras unos probes de crecimiento.
 const ETIQUETA_FIJA = true;   // true = la MAC queda siempre bajo la célula (y cambia de color con su edad)
@@ -251,10 +251,14 @@ class Entidad {
     this.madurezVisual += (this.madurez - this.madurezVisual) * (1 - Math.exp(-dt * 3));
 
     // La edad (tiempo desde que nació, con transición suave) define la velocidad y el color.
-    const tEdad = constrain((ahora - this.nacimiento) / (ESCALA_EDAD_S * 1000), 0, 1);
+    const escalaEdadS = (typeof params !== "undefined" && params.tiempoLifecycle !== undefined)
+      ? params.tiempoLifecycle
+      : ESCALA_EDAD_S;
+    const tEdad = constrain((ahora - this.nacimiento) / (escalaEdadS * 1000), 0, 1);
     this.edad = tEdad * tEdad * (3 - 2 * tEdad);
+    const peticionesMax = Math.max(3, Math.round(escalaEdadS * 0.133));
     const edadPorPeticiones = constrain(
-      (this.cantidadPeticiones - 1) / (PETICIONES_COLOR_MAXIMO - 1), 0, 1
+      (this.cantidadPeticiones - 1) / (peticionesMax - 1), 0, 1
     );
     this.edadColor = max(this.edad, edadPorPeticiones);
     this.pulsoRespiracion = 1 + 0.05 * sin(ahora * 0.00125 + this.seed);
@@ -319,8 +323,8 @@ class Entidad {
   dibujarEtiqueta() {
     if (!this.etiqueta) return;
     const tam = this.tamBase * params.tamanoBase * this.factorCercania * this.escalaTamano;
-    const edadDibujo = colapsoActivo ? 1 : this.edadColor;
-    const [cr, cg, cb] = colorPorEdad(edadDibujo);
+    const esVig = typeof colapsoActivo !== "undefined" && colapsoActivo;
+    const [cr, cg, cb] = colorPorEdad(this.edadColor, esVig);
     dibujarEtiquetaMac(
       this.etiqueta, this.etiquetaLetras,
       this.x, this.y + max(tam * 1.1, tam * 0.9) + 12,
@@ -330,17 +334,18 @@ class Entidad {
   }
 
   dibujar() {
-    const interferencia = colapsoActivo ? this.interferencia : null;
+    const esVig = typeof colapsoActivo !== "undefined" && colapsoActivo;
+    const interferencia = esVig ? this.interferencia : null;
     const x = this.x;
     const y = this.y;
-    const edadDibujo = colapsoActivo ? 1 : this.edadColor;
+    const edadDibujo = this.edadColor;
     const tam = this.tamBase * params.tamanoBase * this.factorCercania * this.escalaTamano;
     const tamRespiracion = tam * this.pulsoRespiracion;
     const intensidadRespiracion = 0.82 + (this.pulsoRespiracion - 0.95) * 3.6;
     const brillo = this.brilloSonoro;
     const maduracion = constrain(this.madurezVisual, 0, 1);
     
-    // Color según la EDAD: verde vivo (joven) → azul sereno (vieja). El tamaño sigue la maduración.
+    // Color según la EDAD: verde vivo (joven) → azul sereno (vieja). En vigilancia: rojo.
     const brilloEdad = brilloPorEdad(edadDibujo);
 
     noStroke();
@@ -350,10 +355,10 @@ class Entidad {
     const alphaInterferencia = interferencia ? 0.72 + interferencia.intensidad * 0.28 : 1;
     const aHalo = potenciaHalo * this.opacidad * params.brilloParticulas * 0.38 * brilloEdad * alphaInterferencia;
     if (HALO_ORGANICO) {
-      dibujarHaloOrganico(x, y, tamRespiracion, edadDibujo, aHalo * 7.0 * intensidadRespiracion, this.seed, millis());
+      dibujarHaloOrganico(x, y, tamRespiracion, edadDibujo, aHalo * 7.0 * intensidadRespiracion, this.seed, millis(), esVig);
     } else {
       // Estilo anterior: 5 círculos concéntricos
-      const [r, g, b] = colorPorEdad(edadDibujo);
+      const [r, g, b] = colorPorEdad(edadDibujo, esVig);
       for (let i = 5; i > 0; i--) {
         fill(r, g, b, aHalo);
         ellipse(x, y, tamRespiracion * i * 1.35);
@@ -365,10 +370,11 @@ class Entidad {
     dibujarNucleoSuave(
       x, y, tamNucleo, edadDibujo,
       210 * opacidad * params.brilloParticulas * intensidadRespiracion * alphaInterferencia,
-      this.seed
+      this.seed,
+      esVig
     );
 
-    if (!colapsoActivo && brillo > 0.05 && opacidad > 0) {
+    if (!esVig && brillo > 0.05 && opacidad > 0) {
       const alphaNucleo = constrain(
         brillo * 220 * opacidad * params.brilloParticulas, 0, 255
       );

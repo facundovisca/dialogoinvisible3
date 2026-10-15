@@ -2,7 +2,7 @@ class Conexion {
   constructor(a, b, distancia) {
     this.a = a;
     this.b = b;
-    this.distancia = distancia;   // distancia al nacer (solo informativa; el dibujo usa la distancia en vivo)
+    this.distancia = distancia; // distancia al nacer (solo informativa; el dibujo usa la distancia en vivo)
     this.vida = 1.0;
     this.brilloFlash = 0.0;
     this.seed = random(1000);
@@ -23,7 +23,7 @@ class Conexion {
 
   // dist siempre en píxeles del notebook (la escala que usa distConexion).
   static alpha(dist, distRef, vida, opacidadLineas, flash) {
-    const base = map(dist, 0, distRef, 180, 20, true);   // constrain: no se va a negativo si se estiran
+    const base = map(dist, 0, distRef, 180, 20, true); // constrain: no se va a negativo si se estiran
     return constrain(base * vida * opacidadLineas + flash * 255, 0, 255);
   }
 
@@ -37,13 +37,22 @@ class Conexion {
     return [
       (colorA[0] + colorB[0]) / 2,
       (colorA[1] + colorB[1]) / 2,
-      (colorA[2] + colorB[2]) / 2
+      (colorA[2] + colorB[2]) / 2,
     ];
   }
 
   // Filamento ondulado. k = factor de escala de pantalla (proyector / notebook).
   // Usa vertex() (no curveVertex) para que la línea llegue hasta las dos células.
-  static trazar(ax, ay, bx, by, seed, k = 1, desplazamiento = 0, amplitud = 10) {
+  static trazar(
+    ax,
+    ay,
+    bx,
+    by,
+    seed,
+    k = 1,
+    desplazamiento = 0,
+    amplitud = 10,
+  ) {
     noFill();
     const perp = atan2(by - ay, bx - ax) + HALF_PI;
     const pasos = 10;
@@ -53,7 +62,9 @@ class Conexion {
       const x = lerp(ax, bx, t);
       const y = lerp(ay, by, t);
       const n = noise((x / k) * 0.01, (y / k) * 0.01, frameCount * 0.01 + seed);
-      const offset = desplazamiento * sin(t * PI) + map(n, 0, 1, -amplitud, amplitud) * k * sin(t * PI);
+      const offset =
+        desplazamiento * sin(t * PI) +
+        map(n, 0, 1, -amplitud, amplitud) * k * sin(t * PI);
       vertex(x + cos(perp) * offset, y + sin(perp) * offset);
     }
     endShape();
@@ -73,13 +84,32 @@ class Conexion {
   }
 
   dibujar() {
-    const distRef = (typeof params !== "undefined" && params.distConexion) ? params.distConexion : 160;
+    const distRef =
+      typeof params !== "undefined" && params.distConexion
+        ? params.distConexion
+        : 160;
     const d = dist(this.a.x, this.a.y, this.b.x, this.b.y);
-    const [r, g, b] = Conexion.colorConexion(this.a.edadColor, this.b.edadColor);
-    const alpha = Conexion.alpha(d, distRef, this.vida, params.opacidadLineas, this.brilloFlash);
+    const [r, g, b] = Conexion.colorConexion(
+      this.a.edadColor,
+      this.b.edadColor,
+    );
+    const alpha = Conexion.alpha(
+      d,
+      distRef,
+      this.vida,
+      params.opacidadLineas,
+      this.brilloFlash,
+    );
     Conexion.dibujarFilamentos(
-      this.a.x, this.a.y, this.b.x, this.b.y, this.seed, 1,
-      [r, g, b], alpha, Conexion.grosor(this.brilloFlash)
+      this.a.x,
+      this.a.y,
+      this.b.x,
+      this.b.y,
+      this.seed,
+      1,
+      [r, g, b],
+      alpha,
+      Conexion.grosor(this.brilloFlash),
     );
   }
 }
@@ -96,7 +126,7 @@ function dibujarEtiquetaMac(texto, letras, x, y, alpha01, r, g, b, k = 1) {
   textAlign(LEFT, TOP);
   const ctx = drawingContext;
   const tieneEspaciado = ctx.letterSpacing !== undefined;
-  if (tieneEspaciado) ctx.letterSpacing = (1.5 * k) + "px";
+  if (tieneEspaciado) ctx.letterSpacing = 1.5 * k + "px";
   const ancho = textWidth(texto);
   // color: el de la edad de la célula, apenas aclarado (se conserva el tono para que se lea la edad)
   fill(lerp(r, 255, 0.2), lerp(g, 255, 0.2), lerp(b, 255, 0.2), 175 * alpha01);
@@ -105,25 +135,84 @@ function dibujarEtiquetaMac(texto, letras, x, y, alpha01, r, g, b, k = 1) {
   pop();
 }
 
-// --- Color y brillo según la EDAD de la célula (0 = recién nacida, 1 = vieja) ---
-// Joven: verde vivo y luminoso. Vieja: azul sereno y más tenue.
-// Verde (joven) → rojo (vieja), pasando por lima, amarillo y ámbar: un verde-rojo directo se pone "oliva"
-// (barro) en el medio. El rojo final es un coral claro para que el texto chico se lea sobre negro.
-const _PALETA_EDAD = [
-  [0.00, [80, 255, 110]],    // verde vivo
-  [0.25, [170, 240, 70]],    // lima
-  [0.50, [250, 220, 60]],    // amarillo
-  [0.75, [255, 150, 60]],    // ámbar
-  [1.00, [255, 85, 75]]      // rojo coral
+function rgbToHex(r, g, b) {
+  const h =
+    (1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b);
+  return "#" + h.toString(16).slice(1);
+}
+
+function hexToRgb(hex) {
+  let c = String(hex).replace("#", "");
+  if (c.length === 3) {
+    c = c
+      .split("")
+      .map((x) => x + x)
+      .join("");
+  }
+  const num = parseInt(c, 16);
+  if (isNaN(num)) return [128, 128, 128];
+  return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
+}
+
+// ============================================================================
+// COLORES INICIALES DEL LIFECYCLE (Podés cambiar estos valores HEX aquí):
+// ============================================================================
+const COLOR_HEX_INICIO = "#0AFF33"; // Color al nacer / joven (0%)
+const COLOR_HEX_FINAL = "#FBFF00"; // Color al envejecer / longeva (100%)
+// ============================================================================
+
+const PALETA_EDAD_DEFAULT = [
+  [0.0, hexToRgb(COLOR_HEX_INICIO)],
+  [1.0, hexToRgb(COLOR_HEX_FINAL)],
 ];
-function colorPorEdad(edad) {
+
+let _PALETA_EDAD = PALETA_EDAD_DEFAULT.map((p) => [p[0], [...p[1]]]);
+
+function definirColorEdad(indice, r, g, b) {
+  if (_PALETA_EDAD[indice]) {
+    _PALETA_EDAD[indice][1] = [Math.round(r), Math.round(g), Math.round(b)];
+  }
+}
+
+function asignarPaletaEdad(paleta) {
+  if (Array.isArray(paleta) && paleta.length >= 2) {
+    _PALETA_EDAD = paleta.map((p) => [
+      p[0],
+      [Math.round(p[1][0]), Math.round(p[1][1]), Math.round(p[1][2])],
+    ]);
+  }
+}
+
+const COLOR_ROJO_VIGILANCIA = [255, 60, 52]; // Rojo vigilancia
+const COLOR_ROJO_VIGILANCIA_BORDE = [230, 35, 45]; // Borde del halo en vigilancia
+
+function colorPorEdad(
+  edad,
+  esVigilancia = typeof colapsoActivo !== "undefined" && colapsoActivo,
+) {
+  if (esVigilancia) {
+    return COLOR_ROJO_VIGILANCIA.slice();
+  }
   const t = constrain(edad, 0, 1);
+  if (_PALETA_EDAD.length === 2) {
+    const c0 = _PALETA_EDAD[0][1];
+    const c1 = _PALETA_EDAD[1][1];
+    return [
+      lerp(c0[0], c1[0], t),
+      lerp(c0[1], c1[1], t),
+      lerp(c0[2], c1[2], t),
+    ];
+  }
   for (let i = 1; i < _PALETA_EDAD.length; i++) {
     if (t <= _PALETA_EDAD[i][0]) {
       const [t0, c0] = _PALETA_EDAD[i - 1];
       const [t1, c1] = _PALETA_EDAD[i];
       const u = (t - t0) / (t1 - t0);
-      return [lerp(c0[0], c1[0], u), lerp(c0[1], c1[1], u), lerp(c0[2], c1[2], u)];
+      return [
+        lerp(c0[0], c1[0], u),
+        lerp(c0[1], c1[1], u),
+        lerp(c0[2], c1[2], u),
+      ];
     }
   }
   return _PALETA_EDAD[_PALETA_EDAD.length - 1][1].slice();
@@ -138,35 +227,57 @@ function brilloPorEdad(edad) {
 // El degradado cae como una campana hasta 0 (sin corte), "respira" y su centro de luz se desplaza
 // despacio, así el halo no es un círculo perfecto. Conserva la paleta (verde → azul según la edad).
 const HALO_ORGANICO = true;
-const HALO_RADIO = 4.2;        // radio total del halo, en unidades de "tam"
-const HALO_PASOS = 8;          // paradas del degradado (más = más suave)
+const HALO_RADIO = 4.2; // radio total del halo, en unidades de "tam"
+const HALO_PASOS = 8; // paradas del degradado (más = más suave)
 const _HALO_EXP = Math.exp(-3.0);
-const _haloPerfil = [];        // perfil de la campana, calculado una sola vez
+const _haloPerfil = []; // perfil de la campana, calculado una sola vez
 for (let i = 0; i <= HALO_PASOS; i++) {
   const t = i / HALO_PASOS;
   _haloPerfil.push((Math.exp(-3.0 * t * t) - _HALO_EXP) / (1 - _HALO_EXP));
 }
 
 // alpha = opacidad máxima en el centro (0..255). tiempo en ms (para la respiración).
-function dibujarHaloOrganico(x, y, tam, edad, alpha, semilla, tiempo) {
+function dibujarHaloOrganico(
+  x,
+  y,
+  tam,
+  edad,
+  alpha,
+  semilla,
+  tiempo,
+  esVigilancia = typeof colapsoActivo !== "undefined" && colapsoActivo,
+) {
   if (alpha < 0.5 || tam <= 0) return;
   const ctx = drawingContext;
   const R = tam * HALO_RADIO * (1 + 0.06 * Math.sin(tiempo * 0.0011 + semilla));
   const ang = tiempo * 0.00035 + semilla * 1.7;
-  const desv = R * 0.16;                                   // el centro de luz se corre un poco y se mueve despacio
+  const desv = R * 0.16; // el centro de luz se corre un poco y se mueve despacio
   const x0 = x + Math.cos(ang) * desv;
   const y0 = y + Math.sin(ang * 1.3) * desv;
-  const c1 = colorPorEdad(edad);                           // centro: color de su edad
-  const c2 = colorPorEdad(Math.min(1, edad + 0.12));       // borde: apenas más azul (misma paleta)
+  const c1 = esVigilancia ? COLOR_ROJO_VIGILANCIA : colorPorEdad(edad, false);
+  const c2 = esVigilancia
+    ? COLOR_ROJO_VIGILANCIA_BORDE
+    : colorPorEdad(Math.min(1, edad + 0.12), false); // borde: apenas más azul (misma paleta)
 
-  ctx.save();                                              // save/restore: p5 guarda su propio estilo de relleno
+  ctx.save(); // save/restore: p5 guarda su propio estilo de relleno
   const grad = ctx.createRadialGradient(x0, y0, 0, x, y, R);
   for (let i = 0; i <= HALO_PASOS; i++) {
     const t = i / HALO_PASOS;
     const r = Math.round(c1[0] + (c2[0] - c1[0]) * t);
     const g = Math.round(c1[1] + (c2[1] - c1[1]) * t);
     const b = Math.round(c1[2] + (c2[2] - c1[2]) * t);
-    grad.addColorStop(t, "rgba(" + r + "," + g + "," + b + "," + (alpha * _haloPerfil[i] / 255).toFixed(4) + ")");
+    grad.addColorStop(
+      t,
+      "rgba(" +
+        r +
+        "," +
+        g +
+        "," +
+        b +
+        "," +
+        ((alpha * _haloPerfil[i]) / 255).toFixed(4) +
+        ")",
+    );
   }
   ctx.fillStyle = grad;
   ctx.beginPath();
@@ -175,16 +286,29 @@ function dibujarHaloOrganico(x, y, tam, edad, alpha, semilla, tiempo) {
   ctx.restore();
 }
 
-function dibujarNucleoSuave(x, y, diam, edad, alpha, semilla = 0) {
+function dibujarNucleoSuave(
+  x,
+  y,
+  diam,
+  edad,
+  alpha,
+  semilla = 0,
+  esVigilancia = typeof colapsoActivo !== "undefined" && colapsoActivo,
+) {
   if (alpha < 0.5 || diam <= 0) return;
   const ctx = drawingContext;
-  const [r, g, b] = colorPorEdad(edad).map(Math.round);
+  const [r, g, b] = (
+    esVigilancia ? COLOR_ROJO_VIGILANCIA : colorPorEdad(edad, false)
+  ).map(Math.round);
   const respiracion = 1 + 0.06 * Math.sin(millis() * 0.0018 + semilla);
   const R = (diam * respiracion) / 2;
   ctx.save();
   const grad = ctx.createRadialGradient(x, y, 0, x, y, R);
   grad.addColorStop(0, `rgba(${r},${g},${b},${(alpha / 255).toFixed(4)})`);
-  grad.addColorStop(0.35, `rgba(${r},${g},${b},${(alpha * 0.72 / 255).toFixed(4)})`);
+  grad.addColorStop(
+    0.35,
+    `rgba(${r},${g},${b},${((alpha * 0.72) / 255).toFixed(4)})`,
+  );
   grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
   ctx.fillStyle = grad;
   ctx.beginPath();
@@ -201,7 +325,10 @@ function dibujarDestelloSuave(x, y, diam, alpha) {
   ctx.save();
   const grad = ctx.createRadialGradient(x, y, 0, x, y, R);
   grad.addColorStop(0, "rgba(255,255,255," + (alpha / 255).toFixed(4) + ")");
-  grad.addColorStop(0.45, "rgba(255,255,255," + (alpha * 0.35 / 255).toFixed(4) + ")");
+  grad.addColorStop(
+    0.45,
+    "rgba(255,255,255," + ((alpha * 0.35) / 255).toFixed(4) + ")",
+  );
   grad.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = grad;
   ctx.beginPath();
@@ -210,7 +337,17 @@ function dibujarDestelloSuave(x, y, diam, alpha) {
   ctx.restore();
 }
 
-function dibujarSeguimientoCelula(x, y, tam, alpha, mac = "", alphaMac = 0, dbm = "", alphaDbm = 0, k = 1) {
+function dibujarSeguimientoCelula(
+  x,
+  y,
+  tam,
+  alpha,
+  mac = "",
+  alphaMac = 0,
+  dbm = "",
+  alphaDbm = 0,
+  k = 1,
+) {
   if (alpha <= 0 && alphaMac <= 0 && alphaDbm <= 0) return;
   push();
   if (alpha > 0) {
@@ -258,10 +395,14 @@ function aplicarEfectoGlitch(ruidoFuerte = false, k = 1) {
   const w = width;
   const h = height;
 
-  const multIntensidad = (typeof params !== "undefined" && params.glitchIntensidad !== undefined)
-    ? params.glitchIntensidad : 1.0;
-  const multScanlines = (typeof params !== "undefined" && params.glitchScanlines !== undefined)
-    ? params.glitchScanlines : 1.0;
+  const multIntensidad =
+    typeof params !== "undefined" && params.glitchIntensidad !== undefined
+      ? params.glitchIntensidad
+      : 1.0;
+  const multScanlines =
+    typeof params !== "undefined" && params.glitchScanlines !== undefined
+      ? params.glitchScanlines
+      : 1.0;
 
   if (multIntensidad <= 0.01 && multScanlines <= 0.01) return;
 
@@ -283,7 +424,7 @@ function aplicarEfectoGlitch(ruidoFuerte = false, k = 1) {
     }
 
     // 2. Desfase de color / aberración en 1 o 2 bandas
-    if (multScanlines > 0.01 && random() > (1 - 0.8 * min(1, multScanlines))) {
+    if (multScanlines > 0.01 && random() > 1 - 0.8 * min(1, multScanlines)) {
       const tintY = random(0, h - 30);
       const tintH = random(12, 50) * k;
       noStroke();
@@ -319,7 +460,6 @@ function aplicarEfectoGlitch(ruidoFuerte = false, k = 1) {
         rect(bx, by, bw, bh);
       }
     }
-
   } else {
     // --- ESTADO BASE DE COLAPSO (glitch sutil e intermitente) ---
     if (multIntensidad > 0.01 && random() < 0.25 * multIntensidad) {
@@ -344,4 +484,3 @@ function aplicarEfectoGlitch(ruidoFuerte = false, k = 1) {
 
   pop();
 }
-

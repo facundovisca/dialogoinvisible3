@@ -42,6 +42,9 @@ function setup() {
       if (data.altoOrigen) altoOrigen = data.altoOrigen;
       if (data.params) {
         Object.assign(params, data.params);
+        if (data.params.paletaEdad && typeof asignarPaletaEdad === "function") {
+          asignarPaletaEdad(data.params.paletaEdad);
+        }
       }
     } else if (data.tipo === 'LIMPIAR_TODO') {
       entidadesRecibidas = [];
@@ -80,7 +83,7 @@ function draw() {
     const gy = py;
     const escala = e.escala !== undefined ? e.escala : 1.0;
     const pulsoRespiracion = e.pulsoRespiracion !== undefined ? e.pulsoRespiracion : 1;
-    const edadDibujo = colapsoActivo ? 1 : e.edad || 0;
+    const edadDibujo = e.edad || 0;
     const intensidadRespiracion = 0.82 + (pulsoRespiracion - 0.95) * 3.6;
     const tamEscalado = e.tamBase * params.tamanoBase * e.factorCercania * escala * k * pulsoRespiracion;
     const brilloSonoro = e.brilloSonoro || 0;
@@ -94,9 +97,9 @@ function draw() {
     const alphaInterferencia = interferencia ? 0.72 + interferencia.intensidad * 0.28 : 1;
     const aHalo = potenciaHalo * e.opacidad * params.brilloParticulas * 0.38 * brilloEdad * alphaInterferencia;
     if (HALO_ORGANICO) {
-      dibujarHaloOrganico(gx, gy, tamEscalado, edadDibujo, aHalo * 7.0 * intensidadRespiracion, e.seed || 0, millis());
+      dibujarHaloOrganico(gx, gy, tamEscalado, edadDibujo, aHalo * 7.0 * intensidadRespiracion, e.seed || 0, millis(), colapsoActivo);
     } else {
-      const [r, g, b] = colorPorEdad(edadDibujo);
+      const [r, g, b] = colorPorEdad(edadDibujo, colapsoActivo);
       for (let i = 5; i > 0; i--) {
         fill(r, g, b, aHalo);
         ellipse(gx, gy, tamEscalado * i * 1.35);
@@ -108,7 +111,8 @@ function draw() {
     dibujarNucleoSuave(
       gx, gy, tamNucleo, edadDibujo,
       210 * opacidad * params.brilloParticulas * intensidadRespiracion * alphaInterferencia,
-      e.seed || 0
+      e.seed || 0,
+      colapsoActivo
     );
 
     if (!colapsoActivo && brilloSonoro > 0.05 && opacidad > 0) {
