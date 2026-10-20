@@ -100,10 +100,22 @@ void promisc_cb(uint8_t *buf, uint16_t len) {
       uint8_t tagType = packet[24];
       uint8_t ssidLen = packet[25];
       if (tagType == 0 && ssidLen > 0 && ssidLen <= 32 && (len >= 12 + 26 + ssidLen)) {
-        char ssidBuf[33];
-        memset(ssidBuf, 0, sizeof(ssidBuf));
-        memcpy(ssidBuf, &packet[26], ssidLen);
-        ssid = String(ssidBuf);
+        // Solo aceptar si es texto ASCII legible con letras o numeros
+        bool esLegible = true;
+        bool tieneAlfanumerico = false;
+        for (uint8_t i = 0; i < ssidLen; i++) {
+          uint8_t c = packet[26 + i];
+          if (c < 32 || c > 126) { esLegible = false; break; }
+          if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) {
+            tieneAlfanumerico = true;
+          }
+        }
+        if (esLegible && tieneAlfanumerico) {
+          char ssidBuf[33];
+          memset(ssidBuf, 0, sizeof(ssidBuf));
+          memcpy(ssidBuf, &packet[26], ssidLen);
+          ssid = String(ssidBuf);
+        }
       }
     }
 

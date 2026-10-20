@@ -612,7 +612,11 @@ function procesarMensajeSerial(str) {
 		const mac = partes[1].trim();
 		const rssi = parseInt(partes[2].trim(), 10);
 		if (!mac || isNaN(rssi)) return; // línea corrupta: antes NaN pasaba el filtro de RSSI
-		const ssid = partes.length >= 4 ? partes.slice(3).join(",").trim() : ""; // un SSID puede traer comas
+		let ssid = partes.length >= 4 ? partes.slice(3).join(",").trim() : ""; // un SSID puede traer comas
+		// Filtrar basura binaria, bytes corruptos o caracteres de control no imprimibles
+		if (ssid && (/[\uFFFD\x00-\x1F\x7F-\x9F]/.test(ssid) || !/[a-zA-Z0-9]/.test(ssid))) {
+			ssid = "";
+		}
 
 		probesRecibidos++;
 
