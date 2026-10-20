@@ -10,6 +10,7 @@ let colapsoActivo = false;
 let ruidoColapsoActivo = false;
 let parpadeoNegro = 0;
 let seguimientosActuales = [];
+let flashDisolucion = 0; // destello blanco del fin de la vigilancia (0..255), llega en cada SYNC_FRAME
 
 // Resolución del notebook que genera los datos (llega en cada SYNC_FRAME).
 let anchoOrigen = 1440;
@@ -20,8 +21,8 @@ const params = {
   opacidadLineas: 3.0,
   tamanoBase: 1.0,
   brilloParticulas: 1.0,
-  glitchIntensidad: 1.0,
-  glitchScanlines: 1.0
+  glitchIntensidad: 0.0,
+  glitchScanlines: 0.0
 };
 
 function setup() {
@@ -38,6 +39,7 @@ function setup() {
       ruidoColapsoActivo = Boolean(data.colapso && data.colapso.ruidoActivo);
       parpadeoNegro = data.colapso ? data.colapso.parpadeoNegro || 0 : 0;
       seguimientosActuales = data.colapso ? data.colapso.seguimientos || [] : [];
+      flashDisolucion = data.flashDisolucion || 0;
       if (data.anchoOrigen) anchoOrigen = data.anchoOrigen;
       if (data.altoOrigen) altoOrigen = data.altoOrigen;
       if (data.params) {
@@ -61,13 +63,14 @@ function draw() {
   background(0);
 
   if (ultimoFrame > 0 && performance.now() - ultimoFrame > SIN_SENAL_MS &&
-      (entidadesRecibidas.length > 0 || conexionesRecibidas.length > 0 || colapsoActivo || parpadeoNegro > 0)) {
+      (entidadesRecibidas.length > 0 || conexionesRecibidas.length > 0 || colapsoActivo || parpadeoNegro > 0 || flashDisolucion > 0)) {
     entidadesRecibidas = [];      // el fondo translúcido se encarga del fundido a negro
     conexionesRecibidas = [];
     colapsoActivo = false;
     ruidoColapsoActivo = false;
     parpadeoNegro = 0;
     seguimientosActuales = [];
+    flashDisolucion = 0;
   }
 
   // Factor de escala proyector / notebook: tamaños y grosores se ven igual en cualquier resolución.
@@ -125,21 +128,23 @@ function draw() {
   }
 
   // 2. Conexiones: misma función de dibujo y de opacidad que el notebook (Conexion.js)
-  for (const c of conexionesRecibidas) {
-    const ax = c.nax * width;
-    const ay = c.nay * height;
-    const bx = c.nbx * width;
-    const by = c.nby * height;
+  if (!colapsoActivo) {
+    for (const c of conexionesRecibidas) {
+      const ax = c.nax * width;
+      const ay = c.nay * height;
+      const bx = c.nbx * width;
+      const by = c.nby * height;
 
-    // Distancia en píxeles del NOTEBOOK (la escala en que está definida distConexion), en vivo.
-    const d = dist(c.nax * anchoOrigen, c.nay * altoOrigen, c.nbx * anchoOrigen, c.nby * altoOrigen);
-    const flash = c.brilloFlash || 0;
+      // Distancia en píxeles del NOTEBOOK (la escala en que está definida distConexion), en vivo.
+      const d = dist(c.nax * anchoOrigen, c.nay * altoOrigen, c.nbx * anchoOrigen, c.nby * altoOrigen);
+      const flash = c.brilloFlash || 0;
 
-    const [r, g, b] = Conexion.colorConexion(c.edadA || 0, c.edadB || 0);
-    const alpha = Conexion.alpha(d, params.distConexion, c.vida, params.opacidadLineas, flash);
-    Conexion.dibujarFilamentos(
-      ax, ay, bx, by, c.seed, k, [r, g, b], alpha, Conexion.grosor(flash) * k
-    );
+      const [r, g, b] = Conexion.colorConexion(c.edadA || 0, c.edadB || 0);
+      const alpha = Conexion.alpha(d, params.distConexion, c.vida, params.opacidadLineas, flash);
+      Conexion.dibujarFilamentos(
+        ax, ay, bx, by, c.seed, k, [r, g, b], alpha, Conexion.grosor(flash) * k
+      );
+    }
   }
 
   // 3. Etiquetas de MAC (después de los filamentos, igual que en el notebook)
@@ -179,8 +184,8 @@ function draw() {
         k
       );
     }
-    aplicarEfectoGlitch(ruidoColapsoActivo, k);
   }
+  dibujarFlashDisolucion(flashDisolucion);
 }
 
 function windowResized() {

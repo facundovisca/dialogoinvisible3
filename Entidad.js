@@ -186,13 +186,20 @@ class Entidad {
 
   alimentar() {
     if (this.esEspora) {
-      const porConexion = (typeof params !== "undefined" && params.crecimientoPorConexion !== undefined) ? params.crecimientoPorConexion : 0.004;
+      const porConexion = (typeof params !== "undefined" && params.crecimientoPorConexion !== undefined) ? params.crecimientoPorConexion : 0.02;
       this.madurez = min(1.0, this.madurez + porConexion);
       if (this.madurez >= 1.0) this.llegoAlMax = true;
       // Las esporas no reciben probes propios: viven mientras se conecten.
       this.sondasDesdeNacer++;   // para ellas, cada conexión cuenta como "probe de crecimiento" de su etiqueta
       this.ultimoProbe = millis();
       if (!this.forzadaAMorir) this.desvaneciendo = false;
+    } else {
+      // Dispositivos originales (Gen 0): maduración suplementaria por filamentos de conexión
+      const porConexionGen0 = (typeof params !== "undefined" && params.crecimientoPorConexionGen0 !== undefined) ? params.crecimientoPorConexionGen0 : 0.005;
+      if (porConexionGen0 > 0) {
+        this.madurez = min(1.0, this.madurez + porConexionGen0);
+        if (this.madurez >= 1.0) this.llegoAlMax = true;
+      }
     }
   }
 
@@ -229,9 +236,18 @@ class Entidad {
     }
 
     // --- Ciclo de vida ---
-    const vidaMs = (params.vidaEntidad !== undefined ? params.vidaEntidad : 60) * 1000;
+    let vidaSeg = (params.vidaEntidad !== undefined ? params.vidaEntidad : 60);
+    const genObj = (typeof params !== "undefined" && params.genDisparadora !== undefined ? params.genDisparadora : 2);
+    if (this.generacion >= genObj && typeof params !== "undefined" && params.vidaGen2 !== undefined) {
+      vidaSeg = params.vidaGen2;
+    }
+    const vidaMs = vidaSeg * 1000;
     if (!this.desvaneciendo && ahora - this.ultimoProbe > vidaMs) {
       this.desvaneciendo = true;
+      if (this.generacion >= genObj) {
+        this.forzadaAMorir = true;
+        this.velDesvanecer = 0.02; // Desvanecimiento suave
+      }
     }
     if (this.desvaneciendo) {
       this.opacidad = max(0, this.opacidad - this.velDesvanecer * k);
@@ -299,24 +315,7 @@ class Entidad {
   }
 
   actualizarInterferencia(ahora) {
-    if (typeof colapsoActivo === "undefined" || !colapsoActivo) {
-      this.interferencia = null;
-      return;
-    }
-
-    const intervalo = floor(ahora / 30);
-    const azar = (sal) => {
-      const valor = Math.sin((this.seed + sal) * 12.9898 + intervalo * 78.233) * 43758.5453;
-      return valor - Math.floor(valor);
-    };
-    if (azar(0) > 0.48) {
-      this.interferencia = null;
-      return;
-    }
-
-    this.interferencia = {
-      intensidad: 0.35 + azar(1) * 0.65
-    };
+    this.interferencia = null;
   }
 
   // Se dibuja en una pasada aparte, después de los filamentos, para que ninguna línea tache el texto.

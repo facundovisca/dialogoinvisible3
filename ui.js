@@ -15,6 +15,8 @@ let serialLogEl = null;
 let serialLogHeaderEl = null;
 let serialLogCountEl = null;
 let infoEntradaEl = null;
+let infoCicloEl = null;
+let ultimoTextoCiclo = "";
 
 const lineasConsola = new Map();
 let ultimaConsola = 0;
@@ -242,10 +244,38 @@ function iniciarUI(params, callbacks = {}) {
   });
   controlesUI["pulsosEntidades"] = { checkbox: cbPulsosEntidades };
 
-  // --- SECCIÓN: MODO VIGILANCIA / GLITCH [V] ---
-  createDiv("<br><b style='color:#ff5b52'>MODO VIGILANCIA / GLITCH [V]</b>").parent(guiDiv);
-  crearControl("Glitch Int. [A]", "glitchIntensidad", 0, 3, params.glitchIntensidad, 0.1);
-  crearControl("Scanlines [C]", "glitchScanlines", 0, 3, params.glitchScanlines, 0.1);
+  // --- SECCIÓN: CICLO AUTOMÁTICO (VIGILANCIA POR GEN 2) ---
+  createDiv("<br><b style='color:#ffb347'>CICLO AUTOMÁTICO (VIGILANCIA)</b>").parent(guiDiv);
+  infoCicloEl = createDiv("Iniciando monitor demográfico…");
+  infoCicloEl.parent(guiDiv);
+  infoCicloEl.style("color", "#ffb347");
+  infoCicloEl.style("font-family", "monospace");
+  infoCicloEl.style("font-size", "11px");
+  infoCicloEl.style("line-height", "1.35");
+  infoCicloEl.style("margin-top", "2px");
+  infoCicloEl.style("margin-bottom", "6px");
+
+  const cbCicloAutomatico = createCheckbox(" Ciclo automático", params.cicloAutomatico);
+  cbCicloAutomatico.checked(Boolean(params.cicloAutomatico));
+  cbCicloAutomatico.parent(guiDiv);
+  cbCicloAutomatico.style("margin-top", "2px");
+  cbCicloAutomatico.changed(() => {
+    paramsRef.cicloAutomatico = cbCicloAutomatico.checked();
+  });
+  controlesUI["cicloAutomatico"] = { checkbox: cbCicloAutomatico };
+
+  crearControl("Umbral Gen 2", "umbralGen2", 1, 8, params.umbralGen2, 1);
+  crearControl("Crec. conex. Espora", "crecimientoPorConexion", 0.005, 0.08, params.crecimientoPorConexion, 0.005);
+  crearControl("Crec. conex. Gen 0", "crecimientoPorConexionGen0", 0.0, 0.02, params.crecimientoPorConexionGen0, 0.001);
+  crearControl("Gen disparadora", "genDisparadora", 1, 3, params.genDisparadora, 1);
+  crearControl("Vida Gen 2 s", "vidaGen2", 5, 60, params.vidaGen2, 1);
+  crearControl("Umbral color vieja", "umbralEdadColorAntigua", 0.5, 0.95, params.umbralEdadColorAntigua, 0.05);
+  crearControl("Purga al salir %", "pctPurga", 0, 100, params.pctPurga, 5);
+  crearControl("Enfriamiento s", "enfriamientoVigilancia", 0, 60, params.enfriamientoVigilancia, 1);
+  crearControl("Duración máx. s", "duracionVigilancia", 10, 180, params.duracionVigilancia, 5);
+
+  // --- SECCIÓN: MODO VIGILANCIA [V] ---
+  createDiv("<br><b style='color:#ff5b52'>MODO VIGILANCIA [V]</b>").parent(guiDiv);
   crearControl("Vol. Ruido", "volRuidoVigilancia", 0, 3, params.volRuidoVigilancia, 0.1);
   crearControl("Vol. Tensión", "volTensionVigilancia", 0, 3, params.volTensionVigilancia, 0.1);
   crearControl("Freq. Ráfagas", "freqRuidoVigilancia", 0.2, 3, params.freqRuidoVigilancia, 0.1);
@@ -294,6 +324,32 @@ function actualizarInfoEntrada(recibidosPorSeg, aceptadosPorSeg) {
       `Recibidos: ${recibidosPorSeg.toFixed(1)}/s  |  Aceptados: ${aceptadosPorSeg.toFixed(1)}/s`
     );
   }
+}
+
+/**
+ * Muestra el estado del controlador demográfico y métricas clave en la UI.
+ * @param {Object|number} info 
+ */
+function actualizarInfoCiclo(info) {
+  if (!infoCicloEl) return;
+  if (typeof info === "number") {
+    infoCicloEl.html(`Células activas: ${info}`);
+    return;
+  }
+  const colorEstado = info.estado === "VIGILANCIA" ? "#ff5b52" : (info.estado === "ENFRIAMIENTO" ? "#ffd700" : "#80dc64");
+  const centTexto = info.tiempoGen2 > 0 ? ` (${info.tiempoGen2}s restantes)` : "";
+  const enfriarTexto = info.enfriamientoRestante > 0 ? ` [espera ${info.enfriamientoRestante}s]` : "";
+  const umbralG2 = info.umbralGen2 !== undefined ? info.umbralGen2 : 2;
+  const gen2Color = info.gen2Count >= umbralG2 ? "#ff5b52" : (info.gen2Count > 0 ? "#ffd700" : "#80dc64");
+
+  const html = `Estado: <b style="color:${colorEstado}">${info.estado}</b>${enfriarTexto}<br>` +
+    `Gen ≥${info.genMin}: <b style="color:${gen2Color}">${info.gen2Count} / ${umbralG2}</b>${centTexto}<br>` +
+    `Antiguas (color ≥${info.umbralColor.toFixed(2)}): <b>${info.antiguasCount}</b><br>` +
+    `Total activas: <b>${info.totalActivas}</b> | Disp. reales: <b>${info.dispositivosReales}</b>`;
+
+  if (html === ultimoTextoCiclo) return;
+  ultimoTextoCiclo = html;
+  infoCicloEl.html(html);
 }
 
 /**
