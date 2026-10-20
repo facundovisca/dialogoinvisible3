@@ -321,6 +321,7 @@ function iniciarUI(params, callbacks = {}) {
     if (typeof params !== "undefined") params.nombresSimuladosVigilancia = act;
   });
   controlesUI["nombresSimuladosVigilancia"] = { checkbox: cbNombresSimulados };
+  crearControl("% Nombres simulados", "pctNombresSimulados", 0, 100, params.pctNombresSimulados !== undefined ? params.pctNombresSimulados : 35, 5);
 
   // --- SECCIÓN: ACCIONES ---
   createDiv("<br><b>ACCIONES</b>").parent(guiDiv);
@@ -497,10 +498,19 @@ function actualizarConsola(ahora, entidadesMap, colapso) {
       ? paramsRef.nombresSimuladosVigilancia
       : (typeof params !== "undefined" ? params.nombresSimuladosVigilancia : true);
 
+    const pctSim = (paramsRef && paramsRef.pctNombresSimulados !== undefined)
+      ? paramsRef.pctNombresSimulados
+      : (typeof params !== "undefined" && params.pctNombresSimulados !== undefined ? params.pctNombresSimulados : 35);
+
+    const tieneSsidReal = Boolean(e.ssid && e.ssid !== "BROADCAST");
+    const revelaSimulado = colapsoAct && usaNombres && (typeof e.debeRevelarNombreSimulado === "function"
+      ? e.debeRevelarNombreSimulado(pctSim)
+      : true);
+
     const red = !muestraSsid ? "" :
-      (e.ssid && e.ssid !== "BROADCAST"
+      (tieneSsidReal
         ? `  |  [${e.ssid}]`
-        : (colapsoAct && usaNombres && e.aliasVigilancia
+        : (revelaSimulado && e.aliasVigilancia
           ? `  |  [${e.aliasVigilancia}]`
           : "  |  <PROBE SEARCH>"));
     const identidad = String(e.mac).toUpperCase();

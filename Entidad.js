@@ -163,6 +163,21 @@ class Entidad {
     return this.generacion < limite && this.reproducciones < maxRep;
   }
 
+  // Determina si una entidad debe mostrar nombre simulado según un porcentaje configurado (0 a 100).
+  // Si la entidad tiene un SSID real (no BROADCAST), no cuenta como simulado.
+  // Para los probes genéricos (<PROBE SEARCH>), solo un porcentaje determinista revela un alias ficticio.
+  debeRevelarNombreSimulado(pct) {
+    if (this.ssid && this.ssid !== "BROADCAST") return false;
+    const p = typeof pct === "number"
+      ? pct
+      : ((typeof params !== "undefined" && params.pctNombresSimulados !== undefined) ? params.pctNombresSimulados : 35);
+    if (p <= 0) return false;
+    if (p >= 100) return true;
+    const clave = String(this.macOrigen || this.mac || this.seed || "").toUpperCase();
+    const h = hashTexto(clave + "#simulado");
+    return (h % 100) < p;
+  }
+
   actualizarRSSI(rssi) {
     this.rssi = constrain(rssi, -100, -30);
     this.factorCercania = map(this.rssi, -100, -30, 0.8, 1.7);

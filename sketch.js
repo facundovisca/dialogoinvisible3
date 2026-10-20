@@ -41,6 +41,7 @@ const params = {
 	freqRuidoVigilancia: 1.0,
 	colorLetrasVigilancia: "#ff3c34",
 	nombresSimuladosVigilancia: true, // true = en vigilancia la MAC se transforma en nombre simulado/red con efecto glitch
+	pctNombresSimulados: 35, // % de dispositivos <PROBE SEARCH> que revelan nombre simulado en vigilancia
 	tiempoLifecycle: 105, // segundos para completar el ciclo de color (30% menos que 150s)
 	cicloAutomatico: true, // true = ciclo automático gobernado por células de 2da gen
 	umbralGen2: 3, // células de 2da gen requeridas para disparar la vigilancia (evita gatillo sensible)
@@ -498,6 +499,7 @@ function actualizarLogicaGlobal() {
 				paletaEdad: _PALETA_EDAD,
 				colorLetrasVigilancia: params.colorLetrasVigilancia,
 				nombresSimuladosVigilancia: params.nombresSimuladosVigilancia,
+				pctNombresSimulados: params.pctNombresSimulados,
 			},
 		});
 
@@ -1300,21 +1302,30 @@ function actualizarVigilancia(ahora) {
 		let textoVigilancia = macBase;
 
 		if (params.nombresSimuladosVigilancia) {
-			if (!objetivo.aliasVigilancia) {
-				objetivo.aliasVigilancia = asignarIdentidadVigilancia(macBase, objetivo.ssid);
-			}
-			const textoDestino = objetivo.aliasVigilancia || macBase;
-			const tInicioGlitch =
-				DURACION_ADQUISICION_MS +
-				DURACION_REVELADO_MAC_MS +
-				DURACION_PAUSA_ANTES_GLITCH_MS;
-			if (transcurrido >= tInicioGlitch) {
-				const progresoGlitch = constrain(
-					(transcurrido - tInicioGlitch) / DURACION_GLITCH_VIGILANCIA_MS,
-					0,
-					1,
-				);
-				textoVigilancia = calcularTextoGlitch(macBase, textoDestino, progresoGlitch);
+			const tieneSsidReal = Boolean(objetivo.ssid && objetivo.ssid !== "BROADCAST");
+			const pctSim = params.pctNombresSimulados !== undefined ? params.pctNombresSimulados : 35;
+			const esCandidatoSimulado = !tieneSsidReal && (typeof objetivo.debeRevelarNombreSimulado === "function"
+				? objetivo.debeRevelarNombreSimulado(pctSim)
+				: true);
+			const debeMostrarNombre = tieneSsidReal || esCandidatoSimulado;
+
+			if (debeMostrarNombre) {
+				if (!objetivo.aliasVigilancia) {
+					objetivo.aliasVigilancia = asignarIdentidadVigilancia(macBase, objetivo.ssid);
+				}
+				const textoDestino = objetivo.aliasVigilancia || macBase;
+				const tInicioGlitch =
+					DURACION_ADQUISICION_MS +
+					DURACION_REVELADO_MAC_MS +
+					DURACION_PAUSA_ANTES_GLITCH_MS;
+				if (transcurrido >= tInicioGlitch) {
+					const progresoGlitch = constrain(
+						(transcurrido - tInicioGlitch) / DURACION_GLITCH_VIGILANCIA_MS,
+						0,
+						1,
+					);
+					textoVigilancia = calcularTextoGlitch(macBase, textoDestino, progresoGlitch);
+				}
 			}
 		}
 
