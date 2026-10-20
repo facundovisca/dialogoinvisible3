@@ -8,7 +8,6 @@ function hashTexto(str) {
 // Edad: de 0 (recién nacida) a 1 (vieja) en este tiempo de vida. Las jóvenes son rápidas y del color inicio;
 // las viejas, lentas y del color final. Es tiempo real desde el nacimiento (no depende de los probes).
 const ESCALA_EDAD_S = 105; // 30% menos que los 150s originales
-const PETICIONES_COLOR_MAXIMO = 14;
 
 // Etiqueta con la MAC: se tipea al nacer y se borra tras unos probes de crecimiento.
 const ETIQUETA_FIJA = true;   // true = la MAC queda siempre bajo la célula (y cambia de color con su edad)
@@ -48,7 +47,6 @@ class Entidad {
     this.edadColor = 0;
     this.cantidadPeticiones = 0;
     this.pulsoRespiracion = 1;
-    this.interferencia = null;
 
     // Etiqueta de texto con la MAC completa (solo dispositivos reales; las esporas no tienen).
     this.macOrigen = esEspora ? "" : mac;   // MAC del dispositivo original (las esporas la heredan de su madre)
@@ -310,12 +308,6 @@ class Entidad {
       if (this.y < 50) { this.y = 50; this.angulo = random(0, PI); }
       if (this.y > height - 50) { this.y = height - 50; this.angulo = random(-PI, 0); }
     }
-
-    this.actualizarInterferencia(ahora);
-  }
-
-  actualizarInterferencia(ahora) {
-    this.interferencia = null;
   }
 
   // Se dibuja en una pasada aparte, después de los filamentos, para que ninguna línea tache el texto.
@@ -334,7 +326,6 @@ class Entidad {
 
   dibujar() {
     const esVig = typeof colapsoActivo !== "undefined" && colapsoActivo;
-    const interferencia = esVig ? this.interferencia : null;
     const x = this.x;
     const y = this.y;
     const edadDibujo = this.edadColor;
@@ -351,24 +342,14 @@ class Entidad {
 
     // Halo difuso y orgánico (un solo degradado, sin anillos): respira y su luz se desplaza despacio.
     const potenciaHalo = map(maduracion, 0, 1, 14, 34);
-    const alphaInterferencia = interferencia ? 0.72 + interferencia.intensidad * 0.28 : 1;
-    const aHalo = potenciaHalo * this.opacidad * params.brilloParticulas * 0.38 * brilloEdad * alphaInterferencia;
-    if (HALO_ORGANICO) {
-      dibujarHaloOrganico(x, y, tamRespiracion, edadDibujo, aHalo * 7.0 * intensidadRespiracion, this.seed, millis(), esVig);
-    } else {
-      // Estilo anterior: 5 círculos concéntricos
-      const [r, g, b] = colorPorEdad(edadDibujo, esVig);
-      for (let i = 5; i > 0; i--) {
-        fill(r, g, b, aHalo);
-        ellipse(x, y, tamRespiracion * i * 1.35);
-      }
-    }
+    const aHalo = potenciaHalo * this.opacidad * params.brilloParticulas * 0.38 * brilloEdad;
+    dibujarHaloOrganico(x, y, tamRespiracion, edadDibujo, aHalo * 7.0 * intensidadRespiracion, this.seed, millis(), esVig);
 
     const opacidad = min(1.0, this.opacidad);
     const tamNucleo = max(2.8, tamRespiracion * map(brillo, 0, 1, 0.55, 0.9));
     dibujarNucleoSuave(
       x, y, tamNucleo, edadDibujo,
-      210 * opacidad * params.brilloParticulas * intensidadRespiracion * alphaInterferencia,
+      210 * opacidad * params.brilloParticulas * intensidadRespiracion,
       this.seed,
       esVig
     );

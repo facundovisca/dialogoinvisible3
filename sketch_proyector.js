@@ -7,10 +7,8 @@ const SIN_SENAL_MS = 2000;
 let entidadesRecibidas = [];
 let conexionesRecibidas = [];
 let colapsoActivo = false;
-let ruidoColapsoActivo = false;
 let parpadeoNegro = 0;
 let seguimientosActuales = [];
-let flashDisolucion = 0; // destello blanco del fin de la vigilancia (0..255), llega en cada SYNC_FRAME
 
 // Resolución del notebook que genera los datos (llega en cada SYNC_FRAME).
 let anchoOrigen = 1440;
@@ -20,9 +18,7 @@ const params = {
   distConexion: 160,
   opacidadLineas: 3.0,
   tamanoBase: 1.0,
-  brilloParticulas: 1.0,
-  glitchIntensidad: 0.0,
-  glitchScanlines: 0.0
+  brilloParticulas: 1.0
 };
 
 function setup() {
@@ -36,10 +32,8 @@ function setup() {
       entidadesRecibidas = data.entidades || [];
       conexionesRecibidas = data.conexiones || [];
       colapsoActivo = Boolean(data.colapso && data.colapso.activo);
-      ruidoColapsoActivo = Boolean(data.colapso && data.colapso.ruidoActivo);
       parpadeoNegro = data.colapso ? data.colapso.parpadeoNegro || 0 : 0;
       seguimientosActuales = data.colapso ? data.colapso.seguimientos || [] : [];
-      flashDisolucion = data.flashDisolucion || 0;
       if (data.anchoOrigen) anchoOrigen = data.anchoOrigen;
       if (data.altoOrigen) altoOrigen = data.altoOrigen;
       if (data.params) {
@@ -52,7 +46,6 @@ function setup() {
       entidadesRecibidas = [];
       conexionesRecibidas = [];
       colapsoActivo = false;
-      ruidoColapsoActivo = false;
       parpadeoNegro = 0;
       seguimientosActuales = [];
     }
@@ -63,14 +56,12 @@ function draw() {
   background(0);
 
   if (ultimoFrame > 0 && performance.now() - ultimoFrame > SIN_SENAL_MS &&
-      (entidadesRecibidas.length > 0 || conexionesRecibidas.length > 0 || colapsoActivo || parpadeoNegro > 0 || flashDisolucion > 0)) {
+      (entidadesRecibidas.length > 0 || conexionesRecibidas.length > 0 || colapsoActivo || parpadeoNegro > 0)) {
     entidadesRecibidas = [];      // el fondo translúcido se encarga del fundido a negro
     conexionesRecibidas = [];
     colapsoActivo = false;
-    ruidoColapsoActivo = false;
     parpadeoNegro = 0;
     seguimientosActuales = [];
-    flashDisolucion = 0;
   }
 
   // Factor de escala proyector / notebook: tamaños y grosores se ven igual en cualquier resolución.
@@ -81,7 +72,6 @@ function draw() {
   for (const e of entidadesRecibidas) {
     const px = e.nx * width;
     const py = e.ny * height;
-    const interferencia = colapsoActivo ? e.interferencia : null;
     const gx = px;
     const gy = py;
     const escala = e.escala !== undefined ? e.escala : 1.0;
@@ -92,28 +82,18 @@ function draw() {
     const brilloSonoro = e.brilloSonoro || 0;
 
     const maduracion = constrain(e.madurez || 0, 0, 1);
-
     const brilloEdad = brilloPorEdad(edadDibujo);
 
     // Halo difuso y orgánico (mismo degradado que en el notebook)
     const potenciaHalo = map(maduracion, 0, 1, 14, 34);
-    const alphaInterferencia = interferencia ? 0.72 + interferencia.intensidad * 0.28 : 1;
-    const aHalo = potenciaHalo * e.opacidad * params.brilloParticulas * 0.38 * brilloEdad * alphaInterferencia;
-    if (HALO_ORGANICO) {
-      dibujarHaloOrganico(gx, gy, tamEscalado, edadDibujo, aHalo * 7.0 * intensidadRespiracion, e.seed || 0, millis(), colapsoActivo);
-    } else {
-      const [r, g, b] = colorPorEdad(edadDibujo, colapsoActivo);
-      for (let i = 5; i > 0; i--) {
-        fill(r, g, b, aHalo);
-        ellipse(gx, gy, tamEscalado * i * 1.35);
-      }
-    }
+    const aHalo = potenciaHalo * e.opacidad * params.brilloParticulas * 0.38 * brilloEdad;
+    dibujarHaloOrganico(gx, gy, tamEscalado, edadDibujo, aHalo * 7.0 * intensidadRespiracion, e.seed || 0, millis(), colapsoActivo);
 
     const opacidad = min(1.0, e.opacidad);
     const tamNucleo = max(2.8 * k, tamEscalado * map(brilloSonoro, 0, 1, 0.55, 0.9));
     dibujarNucleoSuave(
       gx, gy, tamNucleo, edadDibujo,
-      210 * opacidad * params.brilloParticulas * intensidadRespiracion * alphaInterferencia,
+      210 * opacidad * params.brilloParticulas * intensidadRespiracion,
       e.seed || 0,
       colapsoActivo
     );
@@ -124,7 +104,6 @@ function draw() {
       );
       dibujarDestelloSuave(gx, gy, tamNucleo * 3.0, alphaNucleo);
     }
-
   }
 
   // 2. Conexiones: misma función de dibujo y de opacidad que el notebook (Conexion.js)
@@ -185,7 +164,6 @@ function draw() {
       );
     }
   }
-  dibujarFlashDisolucion(flashDisolucion);
 }
 
 function windowResized() {

@@ -388,18 +388,3 @@ function dibujarSeguimientoCelula(
   }
   pop();
 }
-
-function aplicarEfectoGlitch(ruidoFuerte = false, k = 1) {
-  // Glitch y scanlines deshabilitados en modo vigilancia por diseño de la obra
-  return;
-}
-
-// Destello blanco de la disolución (fin de la vigilancia). alpha 0..255; lo usan notebook y proyector.
-function dibujarFlashDisolucion(alpha) {
-  if (!alpha || alpha <= 0) return;
-  push();
-  noStroke();
-  fill(255, constrain(alpha, 0, 255));
-  rect(0, 0, width, height);
-  pop();
-}

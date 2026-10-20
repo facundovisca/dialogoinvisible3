@@ -21,7 +21,6 @@ let ultimoTextoCiclo = "";
 const lineasConsola = new Map();
 let ultimaConsola = 0;
 const controlesUI = {};
-let pickersLifecycle = [];
 let paramsRef = null;
 
 /**
@@ -74,14 +73,21 @@ function iniciarUI(params, callbacks = {}) {
     const slider = createSlider(min, max, valInicial, step);
     slider.style("width", "110px");
 
-    const valor = createSpan(valInicial.toString());
-    valor.style("width", "35px");
+    const formatVal = (v) => {
+      if (typeof v === "number" && step < 0.001) {
+        return Number(v.toFixed(4)).toString();
+      }
+      return v.toString();
+    };
+
+    const valor = createSpan(formatVal(valInicial));
+    valor.style("width", "48px");
     valor.style("text-align", "right");
 
     // Enlace reactivo por evento .input()
     slider.input(() => {
       const v = slider.value();
-      valor.html(v.toString());
+      valor.html(formatVal(v));
       if (claveParam && paramsRef) {
         paramsRef[claveParam] = v;
       }
@@ -175,32 +181,9 @@ function iniciarUI(params, callbacks = {}) {
     { nombre: "Color Final (100%)", idx: 1 }
   ];
 
-  pickersLifecycle = etapasPaleta.map(e => {
+  etapasPaleta.forEach(e => {
     const rgb = _PALETA_EDAD[e.idx][1];
-    return crearColorControl(e.nombre, rgbToHex(rgb[0], rgb[1], rgb[2]), e.idx);
-  });
-
-  const btnResetPaleta = createButton("Restaurar Verde → Azul");
-  btnResetPaleta.parent(guiDiv);
-  btnResetPaleta.style("background", "#161616");
-  btnResetPaleta.style("color", "#78ff9a");
-  btnResetPaleta.style("border", "1px solid #444");
-  btnResetPaleta.style("padding", "5px 8px");
-  btnResetPaleta.style("font-family", "monospace");
-  btnResetPaleta.style("font-size", "11px");
-  btnResetPaleta.style("cursor", "pointer");
-  btnResetPaleta.style("margin-top", "6px");
-  btnResetPaleta.style("width", "280px");
-  btnResetPaleta.mousePressed(() => {
-    asignarPaletaEdad(PALETA_EDAD_DEFAULT);
-    pickersLifecycle.forEach((ctrl, i) => {
-      const rgb = PALETA_EDAD_DEFAULT[i][1];
-      const hex = rgbToHex(rgb[0], rgb[1], rgb[2]);
-      ctrl.picker.value(hex);
-      ctrl.valor.html(hex.toUpperCase());
-      ctrl.valor.style("color", hex);
-    });
-    actualizarControlUI("tiempoLifecycle", 105);
+    crearColorControl(e.nombre, rgbToHex(rgb[0], rgb[1], rgb[2]), e.idx);
   });
 
   // --- SECCIÓN: CALIBRACIÓN PLACA REAL ---
@@ -266,11 +249,9 @@ function iniciarUI(params, callbacks = {}) {
 
   crearControl("Umbral Gen 2", "umbralGen2", 1, 8, params.umbralGen2, 1);
   crearControl("Crec. conex. Espora", "crecimientoPorConexion", 0.005, 0.08, params.crecimientoPorConexion, 0.005);
-  crearControl("Crec. conex. Gen 0", "crecimientoPorConexionGen0", 0.0, 0.02, params.crecimientoPorConexionGen0, 0.001);
-  crearControl("Gen disparadora", "genDisparadora", 1, 3, params.genDisparadora, 1);
+  crearControl("Crec. conex. Gen 0", "crecimientoPorConexionGen0", 0.0, 0.02, params.crecimientoPorConexionGen0, 0.0001);
   crearControl("Vida Gen 2 s", "vidaGen2", 5, 60, params.vidaGen2, 1);
   crearControl("Umbral color vieja", "umbralEdadColorAntigua", 0.5, 0.95, params.umbralEdadColorAntigua, 0.05);
-  crearControl("Purga al salir %", "pctPurga", 0, 100, params.pctPurga, 5);
   crearControl("Enfriamiento s", "enfriamientoVigilancia", 0, 60, params.enfriamientoVigilancia, 1);
   crearControl("Duración máx. s", "duracionVigilancia", 10, 180, params.duracionVigilancia, 5);
 
@@ -309,7 +290,10 @@ function actualizarControlUI(clave, valor) {
   if (!ctrl) return;
   if (ctrl.slider) {
     ctrl.slider.value(valor);
-    if (ctrl.valorSpan) ctrl.valorSpan.html(valor.toString());
+    if (ctrl.valorSpan) {
+      const txt = typeof valor === "number" && valor < 0.001 ? Number(valor.toFixed(4)).toString() : valor.toString();
+      ctrl.valorSpan.html(txt);
+    }
   } else if (ctrl.checkbox) {
     ctrl.checkbox.checked(Boolean(valor));
   }

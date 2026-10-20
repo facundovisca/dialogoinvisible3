@@ -36,8 +36,6 @@ const params = {
 	volProbes: 1.0,
 	volConexiones: 1.0,
 	pulsosEntidades: true,
-	glitchIntensidad: 0.0,
-	glitchScanlines: 0.0,
 	volRuidoVigilancia: 1.0,
 	volTensionVigilancia: 1.0,
 	freqRuidoVigilancia: 1.0,
@@ -85,10 +83,7 @@ const PULSOS_BLINK = [
 let estadoCiclo = "NORMAL"; // "NORMAL" | "VIGILANCIA" | "ENFRIAMIENTO"
 let finEnfriamiento = 0;
 let centinelaId = "";
-let flashDisolucion = 0; // 0: transiciones suaves sin destello blanco
-let celulasActivasCiclo = 0;
 
-const LOG_MAX = 15;
 const MAX_ETIQUETAS = 40; // etiquetas de MAC visibles a la vez (si se pasa, las de las células más viejas se borran primero)
 
 // --- Serial robusto: reconexión automática + aviso de silencio ---
@@ -130,7 +125,6 @@ function reiniciarObra() {
 	estadoCiclo = "NORMAL";
 	finEnfriamiento = 0;
 	centinelaId = "";
-	flashDisolucion = 0;
 	vaciarObra();
 }
 
@@ -246,7 +240,6 @@ function draw() {
 			);
 		}
 	}
-	dibujarFlashDisolucion(flashDisolucion);
 }
 
 function actualizarLogicaGlobal() {
@@ -443,7 +436,6 @@ function actualizarLogicaGlobal() {
 			brilloSonoro: e.brilloSonoro,
 			pulsoRespiracion: e.pulsoRespiracion,
 			tamBase: e.tamBase,
-			interferencia: e.interferencia,
 			etiqueta: e.etiqueta, // MAC completa ("" si no tiene o ya se borró)
 			etiquetaLetras: e.etiquetaLetras,
 			etiquetaAlpha: e.etiquetaAlpha,
@@ -457,7 +449,6 @@ function actualizarLogicaGlobal() {
 			nay: c.a.y / height,
 			nbx: c.b.x / width,
 			nby: c.b.y / height,
-			distancia: c.distancia,
 			vida: c.vida,
 			brilloFlash: c.brilloFlash,
 			edadA: c.a.edadColor,
@@ -477,7 +468,6 @@ function actualizarLogicaGlobal() {
 			altoOrigen: height,
 			entidades: payloadEntidades,
 			conexiones: payloadConexiones,
-			flashDisolucion: 0,
 			colapso: {
 				activo: colapsoActivo,
 				ruidoActivo:
@@ -501,8 +491,6 @@ function actualizarLogicaGlobal() {
 				opacidadLineas: params.opacidadLineas,
 				tamanoBase: params.tamanoBase,
 				brilloParticulas: params.brilloParticulas,
-				glitchIntensidad: params.glitchIntensidad,
-				glitchScanlines: params.glitchScanlines,
 				paletaEdad: _PALETA_EDAD,
 			},
 		});
@@ -1048,7 +1036,6 @@ function retornarANormalConPurga(ahora) {
 // CICLO AUTOMÁTICO: gobernado por linaje de 2da generación y purga activa
 function actualizarCicloVigilancia(ahora) {
 	const demo = contarDemografia();
-	celulasActivasCiclo = demo.totalActivas;
 	const umbralG2 = params.umbralGen2 !== undefined ? params.umbralGen2 : 2;
 
 	// Tiempo restante de vida de la célula de 2da generación (para la UI)
