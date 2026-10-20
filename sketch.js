@@ -40,6 +40,7 @@ const params = {
 	volTensionVigilancia: 1.0,
 	freqRuidoVigilancia: 1.0,
 	colorLetrasVigilancia: "#ff3c34",
+	nombresSimuladosVigilancia: true, // true = en vigilancia la MAC se transforma en nombre simulado/red con efecto glitch
 	tiempoLifecycle: 105, // segundos para completar el ciclo de color (30% menos que 150s)
 	cicloAutomatico: true, // true = ciclo automático gobernado por células de 2da gen
 	umbralGen2: 3, // células de 2da gen requeridas para disparar la vigilancia (evita gatillo sensible)
@@ -70,6 +71,8 @@ let seguimientosActuales = [];
 const PERIODO_COLAPSO_MS = 1800;
 const DURACION_ADQUISICION_MS = 1400;
 const DURACION_REVELADO_MAC_MS = 360;
+const DURACION_PAUSA_ANTES_GLITCH_MS = 250;
+const DURACION_GLITCH_VIGILANCIA_MS = 750;
 const DURACION_REVELADO_DBBM_MS = 420;
 const PULSOS_BLINK = [
 	{ inicio: 0, duracion: 54, alpha: 235 },
@@ -494,6 +497,7 @@ function actualizarLogicaGlobal() {
 				brilloParticulas: params.brilloParticulas,
 				paletaEdad: _PALETA_EDAD,
 				colorLetrasVigilancia: params.colorLetrasVigilancia,
+				nombresSimuladosVigilancia: params.nombresSimuladosVigilancia,
 			},
 		});
 
@@ -575,6 +579,8 @@ function reproducirCelula(madre) {
 		hija.etiquetaNace = millis();
 		hija.frecuencia = notas[i];
 		hija.brilloSonoro = 1.0;
+		hija.ssid = madre.ssid || "";
+		hija.aliasVigilancia = madre.aliasVigilancia || "";
 		mapEntidades.set(id, hija);
 
 		// Cada hija suena con su nota propia, escalonadas como un pequeño arpegio.
@@ -637,6 +643,9 @@ function procesarMensajeSerial(str) {
 			const existente = mapEntidades.get(mac);
 			existente.registrarProbe(rssi);
 			existente.ssid = ssid;
+			if (ssid && ssid !== "BROADCAST") {
+				existente.aliasVigilancia = ssid;
+			}
 
 			if (existente.puedeReproducirse()) {
 				reproducirCelula(existente);
@@ -658,6 +667,7 @@ function procesarMensajeSerial(str) {
 			nuevaEntidad.cantidadPeticiones = 1;
 			liberarEtiquetas(1, ahora); // toda célula real nace CON su MAC (si hace falta, se borra la etiqueta más vieja)
 			nuevaEntidad.ssid = ssid;
+			nuevaEntidad.aliasVigilancia = asignarIdentidadVigilancia(mac, ssid);
 			mapEntidades.set(mac, nuevaEntidad);
 
 			if (typeof dispararPulsoCrecimiento === "function") {
@@ -674,6 +684,11 @@ function procesarMensajeSerial(str) {
 }
 
 const DISPOSITIVOS_SALA = [
+	{
+		mac: "DC:2C:6E:AA:BB:CC",
+		ssids: ["iPhone de Emiliano", "BROADCAST"],
+		tipo: "permanente",
+	},
 	{
 		mac: "A4:C3:F0:8A:11:42",
 		ssids: ["Lab_Artes", "UNA_Alumnos", "BROADCAST"],
@@ -860,6 +875,73 @@ const DISPOSITIVOS_SALA = [
 	{ mac: "8C:85:90:99:00:11", ssids: ["BROADCAST"], tipo: "paso" },
 	{ mac: "30:07:4D:11:22:33", ssids: ["BROADCAST"], tipo: "paso" },
 ];
+
+let _catalogoSimuladoCache = null;
+
+function obtenerCatalogoSimulado() {
+	if (_catalogoSimuladoCache && _catalogoSimuladoCache.length > 0) {
+		return _catalogoSimuladoCache;
+	}
+	const lista = [];
+	for (const d of DISPOSITIVOS_SALA) {
+		if (Array.isArray(d.ssids)) {
+			for (const s of d.ssids) {
+				const limpio = String(s).trim();
+				if (limpio && limpio !== "BROADCAST" && !lista.includes(limpio)) {
+					lista.push(limpio);
+				}
+			}
+		}
+	}
+	if (!lista.includes("iPhone de Emiliano")) {
+		lista.push("iPhone de Emiliano");
+	}
+	_catalogoSimuladoCache = lista;
+	return _catalogoSimuladoCache;
+}
+
+function asignarIdentidadVigilancia(mac, ssid) {
+	if (ssid && ssid !== "BROADCAST") {
+		return ssid;
+	}
+	const catalogo = obtenerCatalogoSimulado();
+	if (!catalogo || catalogo.length === 0) return String(mac || "").toUpperCase();
+	const strMac = String(mac || "").toUpperCase();
+	const h = typeof hashTexto === "function" ? hashTexto(strMac) : Math.abs(strMac.split("").reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0));
+	return catalogo[h % catalogo.length];
+}
+
+function calcularTextoGlitch(textoOrigen, textoDestino, progreso) {
+	if (progreso <= 0) return textoOrigen;
+	if (progreso >= 1) return textoDestino;
+
+	const caracteresGlitch = "0123456789ABCDEF!@#$%&*<>/-_[]";
+	const lenOrigen = textoOrigen.length;
+	const lenDestino = textoDestino.length;
+	const longitudActual = Math.round(lenOrigen + (lenDestino - lenOrigen) * progreso);
+	const caracteresFijos = Math.floor(progreso * lenDestino);
+
+	let resultado = "";
+	for (let i = 0; i < longitudActual; i++) {
+		if (i < caracteresFijos) {
+			resultado += textoDestino[i];
+		} else if (i === caracteresFijos) {
+			resultado += caracteresGlitch[Math.floor(Math.random() * caracteresGlitch.length)];
+		} else {
+			const r = Math.random();
+			if (r < 0.65) {
+				resultado += caracteresGlitch[Math.floor(Math.random() * caracteresGlitch.length)];
+			} else if (r < 0.85 && i < lenOrigen) {
+				resultado += textoOrigen[i];
+			} else if (i < lenDestino) {
+				resultado += textoDestino[i];
+			} else {
+				resultado += caracteresGlitch[Math.floor(Math.random() * caracteresGlitch.length)];
+			}
+		}
+	}
+	return resultado;
+}
 
 function generarProbeSimulado() {
 	const r = random();
@@ -1195,6 +1277,28 @@ function actualizarVigilancia(ahora) {
 			objetivo.factorCercania *
 			objetivo.escalaTamano *
 			objetivo.pulsoRespiracion;
+		const macBase = String(objetivo.macOrigen || objetivo.mac || "").toUpperCase();
+		let textoVigilancia = macBase;
+
+		if (params.nombresSimuladosVigilancia) {
+			if (!objetivo.aliasVigilancia) {
+				objetivo.aliasVigilancia = asignarIdentidadVigilancia(macBase, objetivo.ssid);
+			}
+			const textoDestino = objetivo.aliasVigilancia || macBase;
+			const tInicioGlitch =
+				DURACION_ADQUISICION_MS +
+				DURACION_REVELADO_MAC_MS +
+				DURACION_PAUSA_ANTES_GLITCH_MS;
+			if (transcurrido >= tInicioGlitch) {
+				const progresoGlitch = constrain(
+					(transcurrido - tInicioGlitch) / DURACION_GLITCH_VIGILANCIA_MS,
+					0,
+					1,
+				);
+				textoVigilancia = calcularTextoGlitch(macBase, textoDestino, progresoGlitch);
+			}
+		}
+
 		seguimientosActuales.push({
 			x: objetivo.x + derivaX,
 			y: objetivo.y + derivaY,
@@ -1202,7 +1306,7 @@ function actualizarVigilancia(ahora) {
 			alpha: transcurrido < 0 ? 0 : 24 + 30 * suave,
 			alphaMac,
 			alphaDbm,
-			mac: alphaMac > 0 ? objetivo.mac : "",
+			mac: alphaMac > 0 ? textoVigilancia : "",
 			dbm:
 				alphaDbm > 0
 					? `${Math.round(constrain(rssi + variacionDb, -100, -30))} dBm`

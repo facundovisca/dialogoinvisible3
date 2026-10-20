@@ -310,6 +310,18 @@ function iniciarUI(params, callbacks = {}) {
   crearControl("Vol. Tensión", "volTensionVigilancia", 0, 3, params.volTensionVigilancia, 0.1);
   crearControl("Freq. Ráfagas", "freqRuidoVigilancia", 0.2, 3, params.freqRuidoVigilancia, 0.1);
 
+  const cbNombresSimulados = createCheckbox(" Identidad simulada (Glitch)", params.nombresSimuladosVigilancia !== undefined ? Boolean(params.nombresSimuladosVigilancia) : true);
+  cbNombresSimulados.checked(params.nombresSimuladosVigilancia !== undefined ? Boolean(params.nombresSimuladosVigilancia) : true);
+  cbNombresSimulados.parent(guiDiv);
+  cbNombresSimulados.style("margin-top", "3px");
+  cbNombresSimulados.style("color", "#ffb3b0");
+  cbNombresSimulados.changed(() => {
+    const act = cbNombresSimulados.checked();
+    if (paramsRef) paramsRef.nombresSimuladosVigilancia = act;
+    if (typeof params !== "undefined") params.nombresSimuladosVigilancia = act;
+  });
+  controlesUI["nombresSimuladosVigilancia"] = { checkbox: cbNombresSimulados };
+
   // --- SECCIÓN: ACCIONES ---
   createDiv("<br><b>ACCIONES</b>").parent(guiDiv);
   const btnLimpiar = createButton("REINICIAR OBRA [R]");
@@ -481,8 +493,16 @@ function actualizarConsola(ahora, entidadesMap, colapso) {
       agregoLinea = true;
     }
 
+    const usaNombres = (paramsRef && paramsRef.nombresSimuladosVigilancia !== undefined)
+      ? paramsRef.nombresSimuladosVigilancia
+      : (typeof params !== "undefined" ? params.nombresSimuladosVigilancia : true);
+
     const red = !muestraSsid ? "" :
-      (e.ssid && e.ssid !== "BROADCAST" ? `  |  [${e.ssid}]` : "  |  <PROBE SEARCH>");
+      (e.ssid && e.ssid !== "BROADCAST"
+        ? `  |  [${e.ssid}]`
+        : (colapsoAct && usaNombres && e.aliasVigilancia
+          ? `  |  [${e.aliasVigilancia}]`
+          : "  |  <PROBE SEARCH>"));
     const identidad = String(e.mac).toUpperCase();
     el.textContent = `${identidad}  |  ${Math.round(e.rssi)} dBm${red}`;
 

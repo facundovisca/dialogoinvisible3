@@ -56,6 +56,7 @@ class Entidad {
     this.etiquetaAlpha = 0;
     this.etiquetaLetras = 0;      // cuántas letras ya se tipearon
     this.ssid = "";               // última red buscada (solo para la consola)
+    this.aliasVigilancia = "";    // nombre simulado de red o dispositivo para modo vigilancia
     this.sondasDesdeNacer = 0;    // probes de crecimiento recibidos desde que nació
 
     // Ciclo de vida: la entidad vive mientras siga recibiendo probes.
