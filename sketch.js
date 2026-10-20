@@ -606,6 +606,21 @@ function reproducirCelula(madre) {
 	madre.brilloSonoro = 1.0;
 }
 
+function esSsidLegible(str) {
+	if (!str || str === "BROADCAST") return false;
+	if (str.includes("\uFFFD")) return false;
+	let tieneAlfanumerico = false;
+	for (let i = 0; i < str.length; i++) {
+		const c = str.charCodeAt(i);
+		// Códigos de control ASCII y extendidos no imprimibles
+		if ((c >= 0 && c <= 31) || (c >= 127 && c <= 159)) return false;
+		if ((c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122)) {
+			tieneAlfanumerico = true;
+		}
+	}
+	return tieneAlfanumerico;
+}
+
 function procesarMensajeSerial(str) {
 	const partes = str.split(",");
 	if (partes.length >= 3 && partes[0] === "PROBE") {
@@ -614,7 +629,7 @@ function procesarMensajeSerial(str) {
 		if (!mac || isNaN(rssi)) return; // línea corrupta: antes NaN pasaba el filtro de RSSI
 		let ssid = partes.length >= 4 ? partes.slice(3).join(",").trim() : ""; // un SSID puede traer comas
 		// Filtrar basura binaria, bytes corruptos o caracteres de control no imprimibles
-		if (ssid && (/[\uFFFD\x00-\x1F\x7F-\x9F]/.test(ssid) || !/[a-zA-Z0-9]/.test(ssid))) {
+		if (ssid && !esSsidLegible(ssid)) {
 			ssid = "";
 		}
 
