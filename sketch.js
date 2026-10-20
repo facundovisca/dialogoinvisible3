@@ -39,6 +39,7 @@ const params = {
 	volRuidoVigilancia: 1.0,
 	volTensionVigilancia: 1.0,
 	freqRuidoVigilancia: 1.0,
+	colorLetrasVigilancia: "#ff3c34",
 	tiempoLifecycle: 105, // segundos para completar el ciclo de color (30% menos que 150s)
 	cicloAutomatico: true, // true = ciclo automático gobernado por células de 2da gen
 	umbralGen2: 3, // células de 2da gen requeridas para disparar la vigilancia (evita gatillo sensible)
@@ -215,31 +216,31 @@ function draw() {
 			for (const c of conexiones) c.dibujar();
 			for (const e of mapEntidades.values()) e.dibujarEtiqueta();
 		}
+		if (colapsoActivo && parpadeoNegro > 0) {
+			push();
+			noStroke();
+			fill(0, parpadeoNegro);
+			rect(0, 0, width, height);
+			pop();
+		}
+		if (colapsoActivo) {
+			for (const seguimiento of seguimientosActuales) {
+				dibujarSeguimientoCelula(
+					seguimiento.x,
+					seguimiento.y,
+					seguimiento.tam,
+					seguimiento.alpha,
+					seguimiento.mac,
+					seguimiento.alphaMac,
+					seguimiento.dbm,
+					seguimiento.alphaDbm,
+					1,
+				);
+			}
+		}
 	}
 
 	dibujarHUD(params);
-	if (colapsoActivo && parpadeoNegro > 0) {
-		push();
-		noStroke();
-		fill(0, parpadeoNegro);
-		rect(0, 0, width, height);
-		pop();
-	}
-	if (colapsoActivo) {
-		for (const seguimiento of seguimientosActuales) {
-			dibujarSeguimientoCelula(
-				seguimiento.x,
-				seguimiento.y,
-				seguimiento.tam,
-				seguimiento.alpha,
-				seguimiento.mac,
-				seguimiento.alphaMac,
-				seguimiento.dbm,
-				seguimiento.alphaDbm,
-				1,
-			);
-		}
-	}
 }
 
 function actualizarLogicaGlobal() {
@@ -492,6 +493,7 @@ function actualizarLogicaGlobal() {
 				tamanoBase: params.tamanoBase,
 				brilloParticulas: params.brilloParticulas,
 				paletaEdad: _PALETA_EDAD,
+				colorLetrasVigilancia: params.colorLetrasVigilancia,
 			},
 		});
 

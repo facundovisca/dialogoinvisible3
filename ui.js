@@ -255,8 +255,57 @@ function iniciarUI(params, callbacks = {}) {
   crearControl("Enfriamiento s", "enfriamientoVigilancia", 0, 60, params.enfriamientoVigilancia, 1);
   crearControl("Duración máx. s", "duracionVigilancia", 10, 180, params.duracionVigilancia, 5);
 
+  function crearColorParamControl(nombre, claveParam, hexInicial, onChangeExtra) {
+    const contenedor = createDiv();
+    contenedor.style("display", "flex");
+    contenedor.style("justify-content", "space-between");
+    contenedor.style("align-items", "center");
+    contenedor.style("width", "280px");
+    contenedor.style("margin-top", "2px");
+
+    const etiqueta = createSpan(nombre);
+    etiqueta.style("width", "135px");
+    etiqueta.style("color", "#d0d0d0");
+
+    const picker = createColorPicker(hexInicial);
+    picker.style("width", "40px");
+    picker.style("height", "22px");
+    picker.style("border", "1px solid #555");
+    picker.style("background", "none");
+    picker.style("cursor", "pointer");
+    picker.style("padding", "0");
+    picker.style("border-radius", "3px");
+
+    const valor = createSpan(hexInicial.toUpperCase());
+    valor.style("width", "65px");
+    valor.style("text-align", "right");
+    valor.style("font-size", "11px");
+    valor.style("color", hexInicial);
+
+    picker.input(() => {
+      const val = picker.value();
+      const hex = typeof val === "string" ? val : picker.color().toString("#rrggbb");
+      valor.html(hex.toUpperCase());
+      valor.style("color", hex);
+      if (paramsRef) paramsRef[claveParam] = hex;
+      if (typeof params !== "undefined") params[claveParam] = hex;
+      if (typeof onChangeExtra === "function") onChangeExtra(hex);
+    });
+
+    contenedor.child(etiqueta);
+    contenedor.child(picker);
+    contenedor.child(valor);
+    guiDiv.child(contenedor);
+
+    controlesUI[claveParam] = { picker, valorSpan: valor, contenedor };
+    return { picker, valor };
+  }
+
   // --- SECCIÓN: MODO VIGILANCIA [V] ---
   createDiv("<br><b style='color:#ff5b52'>MODO VIGILANCIA [V]</b>").parent(guiDiv);
+  crearColorParamControl("Color Letras", "colorLetrasVigilancia", params.colorLetrasVigilancia || "#ff3c34", () => {
+    actualizarEstiloTerminalVigilancia();
+  });
   crearControl("Vol. Ruido", "volRuidoVigilancia", 0, 3, params.volRuidoVigilancia, 0.1);
   crearControl("Vol. Tensión", "volTensionVigilancia", 0, 3, params.volTensionVigilancia, 0.1);
   crearControl("Freq. Ráfagas", "freqRuidoVigilancia", 0.2, 3, params.freqRuidoVigilancia, 0.1);
@@ -296,6 +345,12 @@ function actualizarControlUI(clave, valor) {
     }
   } else if (ctrl.checkbox) {
     ctrl.checkbox.checked(Boolean(valor));
+  } else if (ctrl.picker) {
+    ctrl.picker.value(valor);
+    if (ctrl.valorSpan) {
+      ctrl.valorSpan.html(String(valor).toUpperCase());
+      ctrl.valorSpan.style("color", valor);
+    }
   }
 }
 
@@ -355,13 +410,42 @@ function alternarVisibilidadLog() {
 }
 
 /**
+ * Aplica o remueve el estilo de vigilancia en la terminal (letras y contador).
+ */
+function actualizarEstiloTerminalVigilancia(colapso) {
+  const colapsoAct = colapso !== undefined ? colapso : (typeof colapsoActivo !== "undefined" ? colapsoActivo : false);
+  const colorVig = (paramsRef && paramsRef.colorLetrasVigilancia)
+    ? paramsRef.colorLetrasVigilancia
+    : ((typeof params !== "undefined" && params.colorLetrasVigilancia) ? params.colorLetrasVigilancia : "#ff3c34");
+
+  if (serialLogEl) {
+    serialLogEl.style.setProperty("--color-terminal-vigilancia", colorVig);
+    if (colapsoAct) {
+      serialLogEl.classList.add("modo-vigilancia");
+    } else {
+      serialLogEl.classList.remove("modo-vigilancia");
+    }
+  }
+
+  if (serialLogHeaderEl) {
+    serialLogHeaderEl.style.setProperty("--color-terminal-vigilancia", colorVig);
+    if (colapsoAct) {
+      serialLogHeaderEl.classList.add("modo-vigilancia");
+    } else {
+      serialLogHeaderEl.classList.remove("modo-vigilancia");
+    }
+  }
+}
+
+/**
  * Sincroniza la visibilidad de los elementos DOM del log según el estado actual.
  */
 function actualizarVisibilidadLog(colapso) {
   const colapsoAct = colapso !== undefined ? colapso : (typeof colapsoActivo !== "undefined" ? colapsoActivo : false);
-  const display = mostrarLog && !colapsoAct ? "flex" : "none";
+  const display = mostrarLog ? "flex" : "none";
   if (serialLogEl) serialLogEl.style.display = display;
   if (serialLogHeaderEl) serialLogHeaderEl.style.display = display === "flex" ? "block" : "none";
+  actualizarEstiloTerminalVigilancia(colapsoAct);
 }
 
 /**
@@ -376,6 +460,8 @@ function actualizarConsola(ahora, entidadesMap, colapso) {
   if (!entidades) return;
 
   const colapsoAct = colapso !== undefined ? colapso : (typeof colapsoActivo !== "undefined" ? colapsoActivo : false);
+  actualizarEstiloTerminalVigilancia(colapsoAct);
+
   const muestraSsid = typeof CONSOLA_MUESTRA_SSID !== "undefined" ? CONSOLA_MUESTRA_SSID : true;
 
   let dispositivosActivos = 0;
@@ -400,7 +486,7 @@ function actualizarConsola(ahora, entidadesMap, colapso) {
     const identidad = String(e.mac).toUpperCase();
     el.textContent = `${identidad}  |  ${Math.round(e.rssi)} dBm${red}`;
 
-    const [r, g, b] = colorPorEdad(e.edadColor, colapsoAct);
+    const [r, g, b] = colorPorEdad(e.edadColor, false);
     el.style.color = `rgb(${Math.round(r)},${Math.round(g)},${Math.round(b)})`;
     el.style.opacity = (0.7 + 0.3 * Math.min(1, e.brilloSonoro)).toFixed(2);
   }

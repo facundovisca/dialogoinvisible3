@@ -84,6 +84,19 @@ main {
     white-space: nowrap;
 }
 
+/* 🚨 ESTILOS EN MODO VIGILANCIA */
+#serial-log.modo-vigilancia .log-entry {
+    color: var(--color-terminal-vigilancia, #ff3c34) !important;
+}
+
+#serial-log-header.modo-vigilancia {
+    color: var(--color-terminal-vigilancia, #ff3c34);
+}
+
+#serial-log-header.modo-vigilancia #serial-log-count {
+    color: var(--color-terminal-vigilancia, #ff3c34) !important;
+}
+
 #serial-log::-webkit-scrollbar {
     display: none;
     width: 0;

@@ -370,12 +370,15 @@ function dibujarSeguimientoCelula(
     line(x1, y1, x1, y1 - tramo);
   }
   const labelY = y + max(13 * k, tam * 1.9);
+  const colVig = (typeof params !== "undefined" && params.colorLetrasVigilancia && typeof hexToRgb === "function")
+    ? hexToRgb(params.colorLetrasVigilancia)
+    : [255, 118, 105];
   if (mac && alphaMac > 0) {
     textFont("monospace");
     textSize(9 * k);
     textAlign(CENTER, TOP);
     noStroke();
-    fill(255, 118, 105, 185 * alphaMac);
+    fill(colVig[0], colVig[1], colVig[2], 185 * alphaMac);
     text(mac, x, labelY);
   }
   if (dbm && alphaDbm > 0) {
@@ -383,7 +386,7 @@ function dibujarSeguimientoCelula(
     textSize(8 * k);
     textAlign(CENTER, TOP);
     noStroke();
-    fill(255, 156, 145, 170 * alphaDbm);
+    fill(colVig[0], colVig[1], colVig[2], 170 * alphaDbm);
     text(dbm, x, labelY + 12 * k);
   }
   pop();
